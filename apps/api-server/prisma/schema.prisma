@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  disabled
+}
+
+enum CocktailPublishStatus {
+  draft
+  published
+  hidden
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+  delivered
+  cancelled
+}
+
+enum ImageType {
+  cover
+  detail
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique @db.VarChar(32)
+  name        String   @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  isSystem    Boolean  @default(true) @map("is_system")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                     Int                  @id @default(autoincrement())
+  username               String               @unique @db.VarChar(50)
+  passwordHash           String               @db.VarChar(255) @map("password_hash")
+  displayName            String               @db.VarChar(100) @map("display_name")
+  phone                  String?              @db.VarChar(20)
+  email                  String?              @db.VarChar(100)
+  roleId                 Int                  @map("role_id")
+  status                 UserStatus           @default(active)
+  lastLoginAt            DateTime?            @map("last_login_at")
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+  role                   Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdCocktails       Cocktail[]           @relation("CocktailCreatedBy")
+  updatedCocktails       Cocktail[]           @relation("CocktailUpdatedBy")
+  createdProductionTasks ProductionTask[]     @relation("TaskCreatedBy")
+  assignedProductionTasks ProductionTask[]    @relation("TaskAssignedTo")
+  completedProductionTasks ProductionTask[]   @relation("TaskCompletedBy")
+  productionTaskLogs     ProductionTaskLog[]
+
+  @@index([roleId])
+  @@index([status])
+  @@map("users")
+}
+
+model Cocktail {
+  id               Int                    @id @default(autoincrement())
+  nameZh           String                 @db.VarChar(100) @map("name_zh")
+  nameEn           String?                @db.VarChar(100) @map("name_en")
+  slug             String?                @unique @db.VarChar(150)
+  price            Decimal?               @db.Decimal(10, 2)
+  shortDescription String?                @db.VarChar(500) @map("short_description")
+  description      String?                @db.Text
+  baseSpirit       String?                @db.VarChar(100) @map("base_spirit")
+  abvNote          String?                @db.VarChar(50) @map("abv_note")
+  glassType        String?                @db.VarChar(100) @map("glass_type")
+  tasteProfile     String?                @db.VarChar(255) @map("taste_profile")
+  garnish          String?                @db.VarChar(255)
+  method           String?                @db.Text
+  scene            String?                @db.VarChar(255)
+  coverImageUrl    String?                @db.VarChar(500) @map("cover_image_url")
+  publishStatus    CocktailPublishStatus  @default(draft) @map("publish_status")
+  isVisible        Boolean                @default(true) @map("is_visible")
+  sortOrder        Int                    @default(0) @map("sort_order")
+  createdBy        Int?                   @map("created_by")
+  updatedBy        Int?                   @map("updated_by")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+  createdByUser    User?                  @relation("CocktailCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  updatedByUser    User?                  @relation("CocktailUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  categories       CocktailCategory[]
+  tags             CocktailTag[]
+  recipes          CocktailRecipe[]
+  images           CocktailImage[]
+  productionTasks  ProductionTask[]
+
+  @@index([nameZh])
+  @@index([publishStatus])
+  @@index([isVisible])
+  @@index([sortOrder])
+  @@map("cocktails")
+}
+
+model Category {
+  id          Int                @id @default(autoincrement())
+  name        String             @unique @db.VarChar(100)
+  slug        String?            @unique @db.VarChar(150)
+  description String?            @db.VarChar(255)
+  isEnabled   Boolean            @default(true) @map("is_enabled")
+  sortOrder   Int                @default(0) @map("sort_order")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  cocktails   CocktailCategory[]
+
+  @@map("categories")
+}
+
+model CocktailCategory {
+  cocktailId Int      @map("cocktail_id")
+  categoryId Int      @map("category_id")
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  createdAt  DateTime @default(now()) @map("created_at")
+  cocktail   Cocktail @relation(fields: [cocktailId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([cocktailId, categoryId])
+  @@index([categoryId])
+  @@map("cocktail_categories")
+}
+
+model Tag {
+  id        Int           @id @default(autoincrement())
+  name      String        @unique @db.VarChar(50)
+  slug      String?       @unique @db.VarChar(100)
+  color     String?       @db.VarChar(20)
+  isEnabled Boolean       @default(true) @map("is_enabled")
+  sortOrder Int           @default(0) @map("sort_order")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  cocktails CocktailTag[]
+
+  @@map("tags")
+}
+
+model CocktailTag {
+  cocktailId Int      @map("cocktail_id")
+  tagId      Int      @map("tag_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  cocktail   Cocktail @relation(fields: [cocktailId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([cocktailId, tagId])
+  @@index([tagId])
+  @@map("cocktail_tags")
+}
+
+model Ingredient {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique @db.VarChar(100)
+  category    String           @db.VarChar(50)
+  description String?          @db.VarChar(255)
+  abv         Decimal?         @db.Decimal(5, 2)
+  isEnabled   Boolean          @default(true) @map("is_enabled")
+  sortOrder   Int              @default(0) @map("sort_order")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  recipes     CocktailRecipe[]
+
+  @@index([category])
+  @@index([isEnabled])
+  @@map("ingredients")
+}
+
+model CocktailRecipe {
+  id                     Int        @id @default(autoincrement())
+  cocktailId             Int        @map("cocktail_id")
+  ingredientId           Int        @map("ingredient_id")
+  ingredientNameSnapshot String     @db.VarChar(100) @map("ingredient_name_snapshot")
+  amount                 Decimal?   @db.Decimal(10, 2)
+  unit                   String?    @db.VarChar(20)
+  note                   String?    @db.VarChar(255)
+  sortOrder              Int        @default(0) @map("sort_order")
+  createdAt              DateTime   @default(now()) @map("created_at")
+  updatedAt              DateTime   @updatedAt @map("updated_at")
+  cocktail               Cocktail   @relation(fields: [cocktailId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  ingredient             Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([cocktailId])
+  @@index([ingredientId])
+  @@index([cocktailId, sortOrder])
+  @@map("cocktail_recipes")
+}
+
+model CocktailImage {
+  id        Int       @id @default(autoincrement())
+  cocktailId Int      @map("cocktail_id")
+  imageUrl  String    @db.VarChar(500) @map("image_url")
+  imageType ImageType @default(detail) @map("image_type")
+  altText   String?   @db.VarChar(255) @map("alt_text")
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  cocktail  Cocktail  @relation(fields: [cocktailId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([cocktailId])
+  @@index([imageType])
+  @@map("cocktail_images")
+}
+
+model ProductionTask {
+  id                  Int                 @id @default(autoincrement())
+  taskNo              String              @unique @db.VarChar(32) @map("task_no")
+  cocktailId          Int                 @map("cocktail_id")
+  cocktailNameSnapshot String             @db.VarChar(100) @map("cocktail_name_snapshot")
+  quantity            Int                 @default(1)
+  remark              String?             @db.VarChar(500)
+  status              TaskStatus          @default(pending)
+  priority            Int                 @default(3)
+  createdByUserId     Int                 @map("created_by_user_id")
+  assignedToUserId    Int?                @map("assigned_to_user_id")
+  startedAt           DateTime?           @map("started_at")
+  completedAt         DateTime?           @map("completed_at")
+  completedByUserId   Int?                @map("completed_by_user_id")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  cocktail            Cocktail            @relation(fields: [cocktailId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  createdBy           User                @relation("TaskCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignedTo          User?               @relation("TaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  completedBy         User?               @relation("TaskCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  logs                ProductionTaskLog[]
+
+  @@index([status])
+  @@index([createdByUserId])
+  @@index([assignedToUserId])
+  @@index([completedByUserId])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@map("production_tasks")
+}
+
+model ProductionTaskLog {
+  id             Int            @id @default(autoincrement())
+  taskId         Int            @map("task_id")
+  actionType     String         @db.VarChar(30) @map("action_type")
+  fromStatus     TaskStatus?    @map("from_status")
+  toStatus       TaskStatus?    @map("to_status")
+  operatorUserId Int            @map("operator_user_id")
+  actionNote     String?        @db.VarChar(500) @map("action_note")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  task           ProductionTask @relation(fields: [taskId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  operator       User           @relation(fields: [operatorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([taskId])
+  @@index([operatorUserId])
+  @@index([createdAt])
+  @@map("production_task_logs")
+}
