@@ -1,7 +1,9 @@
 import { getAccessToken } from './auth';
 
-export const API_BASE_URL = 'http://127.0.0.1:3000/api/v1';
-export const API_ORIGIN = 'http://127.0.0.1:3000';
+const FALLBACK_API_BASE_URL = 'http://127.0.0.1:3000/api/v1';
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? FALLBACK_API_BASE_URL;
+export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? new URL(API_BASE_URL).origin;
 
 interface ApiResponse<T> {
   code: number;

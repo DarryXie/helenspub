@@ -6,6 +6,8 @@
   "description": "Cocktail database monorepo for public menu, staff app, admin web, and API server.",
   "scripts": {
     "dev": "corepack pnpm -r --parallel --filter \"./apps/*\" dev",
+    "dev:path": "node scripts/dev/path-dev.mjs",
+    "dev:path:gateway": "node scripts/dev/path-gateway.mjs",
     "build": "corepack pnpm -r build",
     "lint": "corepack pnpm -r lint",
     "test": "corepack pnpm -r test",

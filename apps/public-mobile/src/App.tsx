@@ -6,7 +6,6 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<MenuPage />} />
-      <Route path="/menu" element={<MenuPage />} />
       <Route path="/cocktails/:id" element={<CocktailDetailPage />} />
     </Routes>
   );

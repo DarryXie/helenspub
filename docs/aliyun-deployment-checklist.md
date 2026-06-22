@@ -7,7 +7,7 @@
 ## 1. 部署目标
 
 - 部署方式：
-  - 正式生产：ECS + Nginx + RDS MySQL + OSS + HTTPS
+  - 正式生产：ECS + Nginx +  HTTPS
 - 这次希望我提供：
   - 远程协助实际部署
 
@@ -26,16 +26,14 @@
 - 是否已有 ECS：
   - 有
 
-- 公网 IP：
-- 操作系统：
-- 地域：
-- 服务器规格（例如 2核4G / 4核8G）：
-- 系统盘大小：
-- 数据盘大小：
+- 公网 IP：139.196.206.35
+- 操作系统：Alibaba Cloud Linux 3 / CentOS 7（已安装宝塔Linux面板 11.1.0 阿里云专享版）
+- 地域：华东2（上海）
+- 服务器规格（例如 2核4G / 4核8G）：2核 2G (通用型 2 vCPU 2 GiB)
+- 系统盘大小：ESSD云盘 40 GiB
+- 数据盘大小：无独立数据盘（已全部挂载在系统盘）
 - 安全组是否可修改：
-  - [ ] 可以
-  - [ ] 不确定
-  - [ ] 不可以
+  - 可以（注：轻量服务器对应控制台的“防火墙”功能，我刚刚已经成功修改并放行了 8888 端口）
 
 ### 2.2 数据库
 
@@ -72,9 +70,11 @@
 
 如果你已经想好了域名或子域名，请填写：
 
-- 管理后台域名：helenspub.xyz/admin
-- 公开前台域名：helenspub.xyz/menu
-- 员工端域名：helenspub.xyz/staff
+- 管理后台地址：https://helenspub.xyz/admin
+- 公开前台地址：https://helenspub.xyz/menu
+- 员工端地址：https://helenspub.xyz/staff
+- 后端 API 地址：https://helenspub.xyz/api/v1
+- 上传文件访问地址：https://helenspub.xyz/uploads
 
 如果暂时没有域名，是否先用 IP 部署测试：
 
@@ -88,7 +88,6 @@
 - 公网IP是：139.196.206.35
 - SSH端口：22
 - 用户名：root
-- 密码：Xie18608525447
 
 - 请注意： 因为我装了宝塔面板，请不要给我直接在系统底层安装 Nginx 或 Node.js 的命令。如果需要部署网站或应用，请告诉我如何在宝塔面板的终端或通过宝塔面板的图形界面来进行操作和配置。
 
@@ -104,11 +103,11 @@
 ## 5. 数据库处理方式
 
 - 这次是：
-  - 全新空库部署
+  - 使用服务器新的数据库
 - 当前数据库位置：
-- 当前数据库大小（大概即可）：40G
+- 当前数据库大小（大概即可）：本次不迁移旧数据；前面提到的 `40G` 是服务器系统盘总容量，不是数据库体量
 - 是否需要保留现有管理员账号、鸡尾酒数据、图片关联数据：
-  - 是
+  - 否
 
 如果要迁移数据，请补充：
 
@@ -122,13 +121,11 @@
 
 ## 6. 图片与上传文件处理方式
 
-当前项目的图片上传是保存在服务器本地目录 `storage/uploads`。
 
 请选择这次的方案：
 - 使用服务器本地存储
 
 如果使用本地存储，请确认：
-
 - 是否接受以后更换服务器时需要迁移图片文件：
   - 是
 
@@ -140,19 +137,19 @@
 请填写或确认以下生产环境变量：
 
 - `NODE_ENV=production`
-- `PORT=` 
-- `DATABASE_URL=`
-- `JWT_SECRET=`
-- `JWT_EXPIRES_IN=` 
-- `UPLOAD_DIR=` 
-- `UPLOAD_BASE_URL=` 
-- `DEFAULT_ADMIN_USERNAME=`
-- `DEFAULT_ADMIN_PASSWORD=`
+- `PORT=3000` 
+- `DATABASE_URL=mysql://helenspub:FKbXTH2rJinWAMX6@127.0.0.1:3306/helenspub`
+- `JWT_SECRET=my_super_secret_key_2026_xyz`
+- `JWT_EXPIRES_IN=24h` 
+- `UPLOAD_DIR=/www/wwwroot/helenspub/uploads` 
+- `UPLOAD_BASE_URL=/uploads`
+- `DEFAULT_ADMIN_USERNAME=admin`
+- `DEFAULT_ADMIN_PASSWORD=admin123456`
 
 如果前端要独立配置 API 地址，也请填写：
 
-- `VITE_API_BASE_URL=`
-- `VITE_API_ORIGIN=`
+- `VITE_API_BASE_URL=https://helenspub.xyz/api/v1`
+- `VITE_API_ORIGIN=https://helenspub.xyz`
 
 ---
 
@@ -162,37 +159,38 @@
   - 服务器直接 `git clone`
 - 是否已有 Git 仓库可供服务器拉取：
   - 有
-- 如果有，请填写仓库地址：
+- 如果有，请填写仓库地址：`https://github.com/DarryXie/helenspub.git`
+- 服务器是否可以直接拉取仓库：
+  - 可以，代码就是当前项目刚上传到 GitHub 的版本
 
 是否接受使用以下运行方式：
 
 - 后端：
-  - [ ] PM2
-  - [ ] Docker
-  - [ ] systemd
+  - PM2
 - 前端静态资源：
-  - [ ] Nginx
-  - [ ] Docker
+  - Nginx
+
+当前已确认宝塔环境中有：
+
+- Nginx：`1.28.3`
+- Node.js：`v20.20.2`
+- PM2：`5.x`
+- MySQL：`5.7.40`
 
 ---
 
 ## 9. 安全与运维要求
 
 - 是否需要 HTTPS：
-  - [ ] 是
-  - [ ] 否
+  - 是，我当前已经申请并下载好了阿里云的 Nginx 格式安全证书。稍后项目部署完，我会自己在宝塔面板的站点设置里配置证书。
 - 是否需要限制后台访问：
-  - [ ] 是
-  - [ ] 否
+  - 否
 - 是否需要定时备份数据库：
-  - [ ] 是
-  - [ ] 否
+  - 是，帮我在**宝塔的‘计划任务’**里配置。
 - 是否需要日志目录和日志轮转：
-  - [ ] 是
-  - [ ] 否
+  - 是
 - 是否需要监控或报警：
-  - [ ] 是
-  - [ ] 否
+  - 否
 
 补充要求：
 
@@ -237,5 +235,3 @@
 - 当前 `admin-web` 代码里 API 地址还是写死的，上线前建议我一并改成环境变量
 
 ---
-
-

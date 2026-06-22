@@ -50,7 +50,7 @@ const session: AuthSession = {
 
 function renderApp(initialEntry: string) {
   return render(
-    <MemoryRouter basename="/app" initialEntries={[initialEntry]}>
+    <MemoryRouter basename="/staff" initialEntries={[initialEntry]}>
       <App />
     </MemoryRouter>,
   );
@@ -85,8 +85,8 @@ describe('App routing and auth flow', () => {
     vi.clearAllMocks();
   });
 
-  it('redirects unauthenticated /app/* access to /app/login', async () => {
-    renderApp('/app/tasks/ordered');
+  it('redirects unauthenticated /staff/* access to /staff/login', async () => {
+    renderApp('/staff/tasks/ordered');
 
     await screen.findByRole('heading', { name: '前台业务端登录' });
     expect(screen.getByText('输入你的业务账号，进入今晚的前台工作台。')).toBeInTheDocument();
@@ -95,7 +95,7 @@ describe('App routing and auth flow', () => {
   it('shows an error message when login fails', async () => {
     mockedLoginWithPassword.mockRejectedValue(new Error('用户名或密码错误'));
 
-    renderApp('/app/login');
+    renderApp('/staff/login');
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText('账号'), 'staff01');
@@ -105,10 +105,10 @@ describe('App routing and auth flow', () => {
     await screen.findByText('用户名或密码错误');
   });
 
-  it('logs in and navigates to the order workbench inside the /app basename', async () => {
+  it('logs in and navigates to the order workbench inside the /staff basename', async () => {
     mockedLoginWithPassword.mockResolvedValue(session);
 
-    renderApp('/app/login');
+    renderApp('/staff/login');
     const user = userEvent.setup();
 
     await user.type(screen.getByLabelText('账号'), 'staff01');
@@ -125,7 +125,7 @@ describe('App routing and auth flow', () => {
     });
   });
 
-  it('restores a persisted session and keeps the user on /app/tasks/order', async () => {
+  it('restores a persisted session and keeps the user on /staff/tasks/order', async () => {
     window.localStorage.setItem('cocktail-staff-session', JSON.stringify(session));
     mockedFetchCurrentUser.mockResolvedValue({
       id: 1,
@@ -139,7 +139,7 @@ describe('App routing and auth flow', () => {
       status: 'active',
     });
 
-    renderApp('/app/tasks/order');
+    renderApp('/staff/tasks/order');
 
     await screen.findByLabelText('搜索鸡尾酒');
     await waitFor(() => {

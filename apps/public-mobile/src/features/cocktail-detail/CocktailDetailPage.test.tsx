@@ -11,9 +11,9 @@ vi.mock('../../services/public-menu', () => ({
 
 const mockedFetchPublicCocktailDetail = vi.mocked(fetchPublicCocktailDetail);
 
-function renderDetail(initialEntry = '/cocktails/1') {
+function renderDetail(initialEntry = '/menu/cocktails/1') {
   return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
+    <MemoryRouter basename="/menu" initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/cocktails/:id" element={<CocktailDetailPage />} />
       </Routes>
@@ -72,7 +72,7 @@ describe('CocktailDetailPage', () => {
       new ApiError('Cocktail not found', 404, 4040),
     );
 
-    renderDetail('/cocktails/404');
+    renderDetail('/menu/cocktails/404');
 
     await screen.findByText('酒单中暂未找到这杯酒');
     expect(screen.getAllByRole('link', { name: '返回菜单' })[0]).toHaveAttribute('href', '/menu');

@@ -21,10 +21,9 @@ const mockedFetchPublicTags = vi.mocked(fetchPublicTags);
 
 function renderMenu(initialEntry = '/menu') {
   return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
+    <MemoryRouter basename="/menu" initialEntries={[initialEntry]}>
       <Routes>
         <Route element={<MenuPage />} path="/" />
-        <Route element={<MenuPage />} path="/menu" />
       </Routes>
     </MemoryRouter>,
   );

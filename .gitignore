@@ -14,6 +14,9 @@ coverage
 .env.production.local
 storage/logs
 storage/uploads
+apps/api-server/storage
+scripts/deploy/tmp
+scripts/dev/*.log
 apps/*/node_modules
 apps/*/dist
 apps/*/coverage

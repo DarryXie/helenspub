@@ -44,7 +44,7 @@ export function CocktailDetailPage() {
     'fromSearch' in location.state &&
     typeof location.state.fromSearch === 'string'
       ? location.state.fromSearch
-      : '/menu';
+      : '/';
 
   const galleryImages = useMemo(() => uniqueImages(detail), [detail]);
   const displayedImage =
@@ -99,7 +99,7 @@ export function CocktailDetailPage() {
           <p className="menu-eyebrow">Menu Detail</p>
           <h1>酒单中暂未找到这杯酒</h1>
           <p>这个链接不是有效的鸡尾酒详情地址，回到菜单继续挑一杯吧。</p>
-          <Link className="status-action status-link" to="/menu">
+          <Link className="status-action status-link" to="/">
             返回菜单
           </Link>
         </div>

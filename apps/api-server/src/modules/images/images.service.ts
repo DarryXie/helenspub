@@ -2,13 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
+import { getUploadBaseUrl, getUploadRoot } from '../../common/uploads';
 
 @Injectable()
 export class ImagesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async uploadImage(file: Express.Multer.File) {
-    const uploadRoot = join(process.cwd(), '..', '..', 'storage', 'uploads', 'cocktails');
+    const uploadRoot = join(getUploadRoot(), 'cocktails');
     await mkdir(uploadRoot, { recursive: true });
 
     const extension = extname(file.originalname) || '.jpg';
@@ -20,7 +21,7 @@ export class ImagesService {
     await writeFile(filePath, file.buffer);
 
     return {
-      url: `/uploads/cocktails/${fileName}`,
+      url: `${getUploadBaseUrl()}/cocktails/${fileName}`,
       filename: fileName,
       size: file.size,
     };
@@ -39,13 +40,8 @@ export class ImagesService {
       where: { id: imageId },
     });
 
-    const filePath = join(
-      process.cwd(),
-      '..',
-      '..',
-      'storage',
-      image.imageUrl.replace('/uploads/', 'uploads/'),
-    );
+    const relativePath = image.imageUrl.replace(`${getUploadBaseUrl()}/`, '');
+    const filePath = join(getUploadRoot(), relativePath);
 
     try {
       await unlink(filePath);
