@@ -365,6 +365,20 @@ img {
   scrollbar-width: none;
 }
 
+.menu-load-more {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0 20px;
+}
+
+.menu-load-more-retry {
+  padding: 14px 0 20px;
+}
+
+.menu-load-more-sentinel {
+  height: 1px;
+}
+
 .menu-category-panel::-webkit-scrollbar,
 .menu-list-scroll::-webkit-scrollbar {
   display: none;
@@ -559,6 +573,15 @@ img {
   animation: shimmer 1.35s linear infinite;
 }
 
+.menu-list-loading-more .menu-row-skeleton {
+  padding: 12px 0;
+}
+
+.menu-loading-chip {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
 .pagination {
   display: flex;
   justify-content: space-between;
@@ -714,13 +737,18 @@ img {
   margin: 22px 0 0;
 }
 
+.detail-fact-item {
+  min-width: 0;
+}
+
 .detail-facts dt {
+  margin: 0;
   color: var(--text-faint);
   font-size: 0.86rem;
 }
 
 .detail-facts dd {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-weight: 700;
 }
 

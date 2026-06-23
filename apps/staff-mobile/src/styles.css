@@ -775,12 +775,36 @@ img {
 }
 
 .status-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-width: 88px;
   min-height: 38px;
   padding: 0 14px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-btn-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(24, 55, 47, 0.08);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.status-btn.active .status-btn-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
 }
 
 .order-flow-list {
@@ -996,6 +1020,68 @@ img {
   color: white;
   text-align: center;
   box-shadow: var(--shadow);
+}
+
+.workbench-toast-with-dock {
+  bottom: calc(106px + env(safe-area-inset-bottom));
+}
+
+.workbench-order-scroll {
+  padding-bottom: calc(126px + env(safe-area-inset-bottom));
+}
+
+.workbench-count-dock {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 24;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--surface-strong) 92%, white 8%);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+.workbench-count-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.workbench-count-card {
+  display: grid;
+  gap: 4px;
+}
+
+.workbench-count-label {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workbench-count-value {
+  color: var(--text-main);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.workbench-count-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  color: #a43a3a;
+  font-size: 13px;
+}
+
+.workbench-count-retry {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
 }
 
 .detail-panel {
@@ -1287,6 +1373,31 @@ img {
     min-height: 32px;
     padding: 0 10px;
     font-size: 11px;
+  }
+
+  .status-filter-bar {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .status-btn {
+    min-width: 84px;
+    padding: 0 12px;
+    gap: 6px;
+  }
+
+  .status-btn-count {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+  }
+
+  .workbench-count-grid {
+    padding: 12px 14px;
+  }
+
+  .workbench-count-value {
+    font-size: 1.25rem;
   }
 
   .detail-facts {

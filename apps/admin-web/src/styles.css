@@ -144,6 +144,15 @@ select {
   color: white;
 }
 
+.primary-button:disabled,
+.ghost-button:disabled,
+.inline-button:disabled,
+.ghost-outline-button:disabled,
+.drag-handle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .eyebrow {
   margin: 0;
   font-size: 12px;
@@ -193,6 +202,39 @@ td {
 .actions-cell {
   display: flex;
   gap: 10px;
+}
+
+.drag-handle-col,
+.drag-handle-cell {
+  width: 68px;
+}
+
+.drag-handle-cell {
+  text-align: center;
+}
+
+.drag-handle-button {
+  width: 36px;
+  height: 36px;
+  border: 1px dashed #c8d4e7;
+  border-radius: 10px;
+  background: #f8faff;
+  color: #60708f;
+  cursor: grab;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.drag-handle-button:active {
+  cursor: grabbing;
+}
+
+.sortable-row.is-dragging td {
+  opacity: 0.45;
+}
+
+.sortable-row.is-drop-target td {
+  background: #fff4ee;
 }
 
 .inline-button,
@@ -275,6 +317,10 @@ td {
 
 .cocktail-editor-header {
   align-items: flex-start;
+}
+
+.cocktail-editor-form {
+  position: relative;
 }
 
 .cocktail-editor-layout {
@@ -537,6 +583,37 @@ td {
   margin-top: 24px;
 }
 
+.editor-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: rgba(238, 244, 255, 0.72);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+.editor-loading-indicator {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px 28px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 55px rgba(27, 42, 64, 0.12);
+  color: #1f2d49;
+}
+
+.editor-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #d9e1f0;
+  border-top-color: #bd5d38;
+  border-radius: 50%;
+  animation: editor-spin 0.8s linear infinite;
+}
+
 .editor-warning-banner {
   display: grid;
   gap: 8px;
@@ -546,6 +623,12 @@ td {
   border: 1px solid #f4c7b8;
   background: #fff2ec;
   color: #8f3e1f;
+}
+
+@keyframes editor-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 1200px) {

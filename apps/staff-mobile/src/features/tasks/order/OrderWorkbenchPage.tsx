@@ -12,6 +12,7 @@ import { fetchAppCocktails, fetchPublicCategories, fetchPublicTags } from '../..
 import { resolveApiAssetUrl } from '../../../services/http';
 import { createProductionTask } from '../../../services/production-tasks';
 import { OrderRemarkModal } from '../shared/OrderRemarkModal';
+import { useWorkbenchTaskCounts } from '../shared/useWorkbenchTaskCounts';
 import { WorkbenchTabs } from '../shared/WorkbenchTabs';
 
 const PAGE_SIZE = 100;
@@ -138,6 +139,12 @@ export function OrderWorkbenchPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const {
+    counts,
+    error: countsError,
+    isLoading: isCountsLoading,
+    refreshCounts,
+  } = useWorkbenchTaskCounts(retryToken);
 
   useEffect(() => {
     if (searchValue === keyword) {
@@ -293,6 +300,7 @@ export function OrderWorkbenchPage() {
       });
 
       setToastMessage(`${orderingCocktail.nameZh} 下单成功`);
+      refreshCounts();
       setOrderingCocktail(null);
       updateFilters({ cocktailId: undefined });
     } catch (requestError) {
@@ -308,12 +316,11 @@ export function OrderWorkbenchPage() {
   }
 
   return (
-    <section className="workbench-shell">
+    <section className="workbench-shell workbench-shell-order">
       <WorkbenchTabs />
 
       <div className="workbench-search-strip">
         <label className="workbench-search-field">
-          <span>搜索鸡尾酒</span>
           <input
             aria-label="搜索鸡尾酒"
             onChange={(event) => setSearchValue(event.target.value)}
@@ -402,11 +409,11 @@ export function OrderWorkbenchPage() {
 
           <section className="menu-list-panel">
             {error ? (
-              <div className="menu-list-scroll">
+              <div className="menu-list-scroll workbench-order-scroll">
                 <InlineError message={error} onRetry={() => setRetryToken((value) => value + 1)} />
               </div>
             ) : isLoading && !result ? (
-              <div className="menu-list-scroll">
+              <div className="menu-list-scroll workbench-order-scroll">
                 <div aria-hidden="true" className="menu-list">
                   {Array.from({ length: 6 }).map((_, index) => (
                     <div className="menu-row-skeleton" key={index}>
@@ -422,7 +429,7 @@ export function OrderWorkbenchPage() {
                 </div>
               </div>
             ) : result && result.list.length === 0 ? (
-              <div className="menu-list-scroll">
+              <div className="menu-list-scroll workbench-order-scroll">
                 <EmptyState
                   title="还没有找到符合条件的鸡尾酒"
                   description="换个分类、风味或关键词试试。"
@@ -438,7 +445,7 @@ export function OrderWorkbenchPage() {
                 />
               </div>
             ) : (
-              <div className="menu-list-scroll">
+              <div className="menu-list-scroll workbench-order-scroll">
                 <div className="menu-list">
                   {result?.list.map((item) => (
                     <OrderRow item={item} key={item.id} onOrder={(cocktail) => setOrderingCocktail(cocktail)} />
@@ -463,7 +470,29 @@ export function OrderWorkbenchPage() {
         />
       ) : null}
 
-      {toastMessage ? <div className="workbench-toast">{toastMessage}</div> : null}
+      <div aria-live="polite" className="workbench-count-dock">
+        {countsError ? (
+          <div className="workbench-count-error" role="status">
+            <span>{countsError}</span>
+            <button className="workbench-count-retry" onClick={refreshCounts} type="button">
+              重试
+            </button>
+          </div>
+        ) : (
+          <div className="workbench-count-grid" role="status">
+            <div className="workbench-count-card">
+              <span className="workbench-count-label">待制作</span>
+              <strong className="workbench-count-value">{isCountsLoading ? '--' : counts.pendingCount}</strong>
+            </div>
+            <div className="workbench-count-card">
+              <span className="workbench-count-label">待配送</span>
+              <strong className="workbench-count-value">{isCountsLoading ? '--' : counts.completedCount}</strong>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {toastMessage ? <div className="workbench-toast workbench-toast-with-dock">{toastMessage}</div> : null}
     </section>
   );
 }

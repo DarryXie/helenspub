@@ -202,7 +202,6 @@ export function CocktailDetailPage() {
         </div>
 
         <div className="detail-hero-copy">
-          <p className="menu-eyebrow">Cocktail Detail</p>
           <h1>{detail.nameZh}</h1>
           {detail.nameEn ? <p className="detail-name-en">{detail.nameEn}</p> : null}
           {detail.price !== null && detail.price !== undefined ? (
@@ -225,28 +224,28 @@ export function CocktailDetailPage() {
 
           <dl className="detail-facts">
             {detail.baseSpirit ? (
-              <>
+              <div className="detail-fact-item">
                 <dt>基酒</dt>
                 <dd>{detail.baseSpirit}</dd>
-              </>
+              </div>
             ) : null}
             {detail.tasteProfile ? (
-              <>
+              <div className="detail-fact-item">
                 <dt>口感</dt>
                 <dd>{detail.tasteProfile}</dd>
-              </>
+              </div>
             ) : null}
             {detail.abvNote ? (
-              <>
+              <div className="detail-fact-item">
                 <dt>酒精感受</dt>
                 <dd>{detail.abvNote}</dd>
-              </>
+              </div>
             ) : null}
             {detail.description ? (
-              <>
+              <div className="detail-fact-item">
                 <dt>详情描述</dt>
                 <dd>{detail.description}</dd>
-              </>
+              </div>
             ) : null}
           </dl>
         </div>

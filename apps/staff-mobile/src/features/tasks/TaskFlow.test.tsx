@@ -31,136 +31,166 @@ function renderPage(initialEntry = '/tasks/ordered') {
 }
 
 describe('OrderedTasksPage', () => {
+  let taskTotals: {
+    pending: number;
+    in_progress: number;
+    completed: number;
+  };
+
   beforeEach(() => {
     mockedFetchProductionTasks.mockReset();
     mockedUpdateProductionTaskStatus.mockReset();
+    taskTotals = {
+      pending: 1,
+      in_progress: 1,
+      completed: 1,
+    };
 
-    mockedFetchProductionTasks.mockResolvedValue({
-      list: [
-        {
-          id: 2,
-          taskNo: 'PT202606180002',
-          cocktailId: 12,
-          cocktailNameSnapshot: '尼格罗尼',
-          quantity: 1,
-          remark: '少冰，杯口不用糖',
-          status: 'completed',
-          priority: 3,
-          createdAt: '2026-06-18T11:05:00.000Z',
-          completedAt: '2026-06-18T11:30:00.000Z',
-          createdBy: {
-            id: 1,
-            username: 'staff01',
-            displayName: '服务员 A',
-            roleCode: 'staff',
+    mockedFetchProductionTasks.mockImplementation(async (filters) => {
+      if (filters.pageSize === 1 && filters.status) {
+        return {
+          list: [],
+          pagination: {
+            page: filters.page ?? 1,
+            pageSize: 1,
+            total: taskTotals[filters.status as keyof typeof taskTotals] ?? 0,
+            totalPages: 1,
           },
-          assignedTo: null,
-        },
-        {
-          id: 1,
-          taskNo: 'PT202606180001',
-          cocktailId: 11,
-          cocktailNameSnapshot: '莫吉托',
-          quantity: 1,
-          remark: '   ',
-          status: 'pending',
-          priority: 3,
-          createdAt: '2026-06-18T11:00:00.000Z',
-          completedAt: null,
-          createdBy: {
-            id: 1,
-            username: 'staff01',
-            displayName: '服务员 A',
-            roleCode: 'staff',
+        };
+      }
+
+      return {
+        list: [
+          {
+            id: 2,
+            taskNo: 'PT202606180002',
+            cocktailId: 12,
+            cocktailNameSnapshot: '尼格罗尼',
+            quantity: 1,
+            remark: '少冰，杯口不用糖',
+            status: 'completed',
+            priority: 3,
+            createdAt: '2026-06-18T11:05:00.000Z',
+            completedAt: '2026-06-18T11:30:00.000Z',
+            createdBy: {
+              id: 1,
+              username: 'staff01',
+              displayName: '服务员 A',
+              roleCode: 'staff',
+            },
+            assignedTo: null,
           },
-          assignedTo: null,
-        },
-        {
-          id: 3,
-          taskNo: 'PT202606180003',
-          cocktailId: 13,
-          cocktailNameSnapshot: '马天尼',
-          quantity: 1,
-          remark: null,
-          status: 'in_progress',
-          priority: 3,
-          createdAt: '2026-06-18T11:10:00.000Z',
-          completedAt: null,
-          createdBy: {
+          {
             id: 1,
-            username: 'staff01',
-            displayName: '服务员 A',
-            roleCode: 'staff',
+            taskNo: 'PT202606180001',
+            cocktailId: 11,
+            cocktailNameSnapshot: '莫吉托',
+            quantity: 1,
+            remark: '   ',
+            status: 'pending',
+            priority: 3,
+            createdAt: '2026-06-18T11:00:00.000Z',
+            completedAt: null,
+            createdBy: {
+              id: 1,
+              username: 'staff01',
+              displayName: '服务员 A',
+              roleCode: 'staff',
+            },
+            assignedTo: null,
           },
-          assignedTo: null,
-        },
-        {
-          id: 4,
-          taskNo: 'PT202606180004',
-          cocktailId: 14,
-          cocktailNameSnapshot: '古典',
-          quantity: 1,
-          remark: null,
-          status: 'delivered',
-          priority: 3,
-          createdAt: '2026-06-18T11:20:00.000Z',
-          completedAt: '2026-06-18T11:25:00.000Z',
-          createdBy: {
-            id: 1,
-            username: 'staff01',
-            displayName: '服务员 A',
-            roleCode: 'staff',
+          {
+            id: 3,
+            taskNo: 'PT202606180003',
+            cocktailId: 13,
+            cocktailNameSnapshot: '马天尼',
+            quantity: 1,
+            remark: null,
+            status: 'in_progress',
+            priority: 3,
+            createdAt: '2026-06-18T11:10:00.000Z',
+            completedAt: null,
+            createdBy: {
+              id: 1,
+              username: 'staff01',
+              displayName: '服务员 A',
+              roleCode: 'staff',
+            },
+            assignedTo: null,
           },
-          assignedTo: null,
-        },
-        {
-          id: 5,
-          taskNo: 'PT202606180005',
-          cocktailId: 15,
-          cocktailNameSnapshot: '玛格丽特',
-          quantity: 1,
-          remark: null,
-          status: 'cancelled',
-          priority: 3,
-          createdAt: '2026-06-18T11:30:00.000Z',
-          completedAt: null,
-          createdBy: {
-            id: 1,
-            username: 'staff01',
-            displayName: '服务员 A',
-            roleCode: 'staff',
+          {
+            id: 4,
+            taskNo: 'PT202606180004',
+            cocktailId: 14,
+            cocktailNameSnapshot: '古典',
+            quantity: 1,
+            remark: null,
+            status: 'delivered',
+            priority: 3,
+            createdAt: '2026-06-18T11:20:00.000Z',
+            completedAt: '2026-06-18T11:25:00.000Z',
+            createdBy: {
+              id: 1,
+              username: 'staff01',
+              displayName: '服务员 A',
+              roleCode: 'staff',
+            },
+            assignedTo: null,
           },
-          assignedTo: null,
+          {
+            id: 5,
+            taskNo: 'PT202606180005',
+            cocktailId: 15,
+            cocktailNameSnapshot: '玛格丽特',
+            quantity: 1,
+            remark: null,
+            status: 'cancelled',
+            priority: 3,
+            createdAt: '2026-06-18T11:30:00.000Z',
+            completedAt: null,
+            createdBy: {
+              id: 1,
+              username: 'staff01',
+              displayName: '服务员 A',
+              roleCode: 'staff',
+            },
+            assignedTo: null,
+          },
+        ],
+        pagination: {
+          page: 1,
+          pageSize: 100,
+          total: 5,
+          totalPages: 1,
         },
-      ],
-      pagination: {
-        page: 1,
-        pageSize: 100,
-        total: 5,
-        totalPages: 1,
-      },
+      };
     });
 
-    mockedUpdateProductionTaskStatus.mockResolvedValue({
-      id: 1,
-      taskNo: 'PT202606180001',
-      cocktailId: 11,
-      cocktailNameSnapshot: '莫吉托',
-      quantity: 1,
-      remark: '   ',
-      status: 'completed',
-      priority: 3,
-      createdAt: '2026-06-18T11:00:00.000Z',
-      completedAt: '2026-06-18T11:35:00.000Z',
-      createdBy: {
+    mockedUpdateProductionTaskStatus.mockImplementation(async () => {
+      taskTotals.pending -= 1;
+      taskTotals.completed += 1;
+
+      return {
         id: 1,
-        username: 'staff01',
-        displayName: '服务员 A',
-        roleCode: 'staff',
-      },
-      assignedTo: null,
-      recipeItems: [],
-      logs: [],
+        taskNo: 'PT202606180001',
+        cocktailId: 11,
+        cocktailNameSnapshot: '莫吉托',
+        quantity: 1,
+        remark: '   ',
+        status: 'completed',
+        priority: 3,
+        createdAt: '2026-06-18T11:00:00.000Z',
+        completedAt: '2026-06-18T11:35:00.000Z',
+        createdBy: {
+          id: 1,
+          username: 'staff01',
+          displayName: '服务员 A',
+          roleCode: 'staff',
+        },
+        assignedTo: null,
+        recipeItems: [],
+        logs: [],
+      };
     });
   });
 
@@ -183,6 +213,10 @@ describe('OrderedTasksPage', () => {
       .map((node) => node.textContent);
 
     expect(titles).toEqual(['莫吉托', '尼格罗尼', '马天尼', '古典', '玛格丽特']);
+    expect(screen.getByRole('button', { name: /待制作\s*2/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /制作完成\s*1/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '全部' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '已送达' })).toBeInTheDocument();
   });
 
   it('shows remarks only when the task remark has non-whitespace content', async () => {
@@ -202,7 +236,7 @@ describe('OrderedTasksPage', () => {
     const user = userEvent.setup();
 
     await screen.findByText('莫吉托');
-    await user.click(screen.getByRole('button', { name: '待制作' }));
+    await user.click(screen.getByRole('button', { name: /待制作\s*2/ }));
 
     expect(screen.getByText('莫吉托')).toBeInTheDocument();
     expect(screen.getByText('马天尼')).toBeInTheDocument();
@@ -236,6 +270,11 @@ describe('OrderedTasksPage', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /待制作\s*1/ })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /制作完成\s*2/ })).toBeInTheDocument();
   });
 
   it('navigates to the recipe page from the status modal', async () => {

@@ -1,11 +1,6 @@
-import { startTransition, useEffect, useState } from 'react';
+import { startTransition, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import type {
-  CategoryItem,
-  CocktailListItem,
-  PaginatedResult,
-  TagItem,
-} from '../../types/public-menu';
+import type { CategoryItem, CocktailListItem, TagItem } from '../../types/public-menu';
 import {
   fetchPublicCategories,
   fetchPublicCocktails,
@@ -27,7 +22,6 @@ function parsePositiveNumber(value: string | null) {
 function buildSearchParams(filters: {
   categoryId?: number;
   tagId?: number;
-  page?: number;
 }) {
   const params = new URLSearchParams();
 
@@ -39,20 +33,7 @@ function buildSearchParams(filters: {
     params.set('tagId', String(filters.tagId));
   }
 
-  if (filters.page && filters.page > 1) {
-    params.set('page', String(filters.page));
-  }
-
   return params;
-}
-
-function paginationWindow(currentPage: number, totalPages: number) {
-  if (totalPages <= 5) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1);
-  }
-
-  const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-  return Array.from({ length: 5 }, (_, index) => start + index);
 }
 
 function formatPrice(price?: number | null) {
@@ -116,56 +97,6 @@ function MenuRow({
   );
 }
 
-function Pagination({
-  page,
-  totalPages,
-  onSelectPage,
-}: {
-  page: number;
-  totalPages: number;
-  onSelectPage: (nextPage: number) => void;
-}) {
-  if (totalPages <= 1) {
-    return null;
-  }
-
-  const pages = paginationWindow(page, totalPages);
-
-  return (
-    <nav aria-label="菜单分页" className="pagination">
-      <button
-        className="pagination-button"
-        disabled={page <= 1}
-        onClick={() => onSelectPage(page - 1)}
-        type="button"
-      >
-        上一页
-      </button>
-      <div className="pagination-pages">
-        {pages.map((item) => (
-          <button
-            aria-current={item === page ? 'page' : undefined}
-            className={`pagination-page${item === page ? ' is-active' : ''}`}
-            key={item}
-            onClick={() => onSelectPage(item)}
-            type="button"
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-      <button
-        className="pagination-button"
-        disabled={page >= totalPages}
-        onClick={() => onSelectPage(page + 1)}
-        type="button"
-      >
-        下一页
-      </button>
-    </nav>
-  );
-}
-
 function MenuListSkeleton() {
   return (
     <div aria-hidden="true" className="menu-list">
@@ -184,18 +115,41 @@ function MenuListSkeleton() {
   );
 }
 
+function MenuLoadMoreSkeleton() {
+  return (
+    <div aria-live="polite" className="menu-load-more" role="status">
+      <p className="menu-loading-chip">正在加载更多...</p>
+      <div aria-hidden="true" className="menu-list menu-list-loading-more">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <div className="menu-row menu-row-skeleton" key={index}>
+            <div className="menu-row-skeleton-media" />
+            <div className="menu-row-skeleton-copy">
+              <span className="menu-row-skeleton-line menu-row-skeleton-line-short" />
+              <span className="menu-row-skeleton-line menu-row-skeleton-line-tags" />
+              <span className="menu-row-skeleton-line menu-row-skeleton-line-long" />
+            </div>
+            <div className="menu-row-skeleton-price" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FilterRetry({
   message,
   onRetry,
+  buttonLabel = '重试',
 }: {
   message: string;
   onRetry: () => void;
+  buttonLabel?: string;
 }) {
   return (
     <div className="inline-error" role="alert">
       <span>{message}</span>
       <button onClick={onRetry} type="button">
-        重试
+        {buttonLabel}
       </button>
     </div>
   );
@@ -208,17 +162,27 @@ export function MenuPage() {
   const [tags, setTags] = useState<TagItem[]>([]);
   const [filtersError, setFiltersError] = useState<string | null>(null);
   const [isFiltersLoading, setIsFiltersLoading] = useState(true);
-  const [menuResult, setMenuResult] = useState<PaginatedResult<CocktailListItem> | null>(null);
+  const [menuItems, setMenuItems] = useState<CocktailListItem[]>([]);
   const [menuError, setMenuError] = useState<string | null>(null);
-  const [isMenuLoading, setIsMenuLoading] = useState(true);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [retryToken, setRetryToken] = useState(0);
+  const menuListScrollRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const activeMenuRequestRef = useRef(0);
+  const loadMoreLockRef = useRef(false);
 
   const categoryId = parsePositiveNumber(searchParams.get('categoryId'));
   const tagId = parsePositiveNumber(searchParams.get('tagId'));
-  const page = parsePositiveNumber(searchParams.get('page')) ?? 1;
-  const fromSearch = `${location.pathname}${location.search}`;
+  const currentFilterParams = buildSearchParams({ categoryId, tagId });
+  const currentFilterSearch = currentFilterParams.toString();
+  const fromSearch = currentFilterSearch
+    ? `${location.pathname}?${currentFilterSearch}`
+    : location.pathname;
   const hasActiveFilters = Boolean(categoryId || tagId);
-  const visiblePages = menuResult?.pagination.totalPages ?? 1;
 
   useEffect(() => {
     let isCancelled = false;
@@ -256,49 +220,61 @@ export function MenuPage() {
 
   useEffect(() => {
     let isCancelled = false;
+    const requestId = activeMenuRequestRef.current + 1;
+    activeMenuRequestRef.current = requestId;
+    loadMoreLockRef.current = false;
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsMenuLoading(true);
+    setIsInitialLoading(true);
+    setIsLoadingMore(false);
     setMenuError(null);
+    setLoadMoreError(null);
+    setMenuItems([]);
+    setCurrentPage(0);
+    setTotalPages(1);
 
     fetchPublicCocktails({
-      page,
+      page: 1,
       pageSize: PAGE_SIZE,
       categoryId,
       tagId,
     })
       .then((result) => {
-        if (!isCancelled) {
-          setMenuResult(result);
+        if (isCancelled || requestId !== activeMenuRequestRef.current) {
+          return;
         }
+
+        setMenuItems(result.list);
+        setCurrentPage(result.pagination.page);
+        setTotalPages(result.pagination.totalPages);
       })
       .catch((error: Error) => {
-        if (!isCancelled) {
-          setMenuError(error.message || '菜单加载失败');
+        if (isCancelled || requestId !== activeMenuRequestRef.current) {
+          return;
         }
+
+        setMenuError(error.message || '菜单加载失败');
       })
       .finally(() => {
-        if (!isCancelled) {
-          setIsMenuLoading(false);
+        if (!isCancelled && requestId === activeMenuRequestRef.current) {
+          setIsInitialLoading(false);
         }
       });
 
     return () => {
       isCancelled = true;
     };
-  }, [page, categoryId, tagId, retryToken]);
+  }, [categoryId, tagId, retryToken]);
 
   function updateSearch(partial: {
     categoryId?: number;
     tagId?: number;
-    page?: number;
   }) {
     const nextParams = buildSearchParams({
       categoryId: Object.prototype.hasOwnProperty.call(partial, 'categoryId')
         ? partial.categoryId
         : categoryId,
       tagId: Object.prototype.hasOwnProperty.call(partial, 'tagId') ? partial.tagId : tagId,
-      page: partial.page !== undefined ? partial.page : page,
     });
 
     startTransition(() => {
@@ -310,7 +286,6 @@ export function MenuPage() {
     updateSearch({
       categoryId: nextCategoryId,
       tagId,
-      page: 1,
     });
   }
 
@@ -318,15 +293,6 @@ export function MenuPage() {
     updateSearch({
       categoryId,
       tagId: nextTagId,
-      page: 1,
-    });
-  }
-
-  function handlePageChange(nextPage: number) {
-    updateSearch({
-      categoryId,
-      tagId,
-      page: nextPage,
     });
   }
 
@@ -339,6 +305,105 @@ export function MenuPage() {
   function handleRetry() {
     setRetryToken((value) => value + 1);
   }
+
+  function handleLoadMore(nextPage: number) {
+    if (
+      loadMoreLockRef.current ||
+      isInitialLoading ||
+      isLoadingMore ||
+      menuError ||
+      nextPage <= currentPage ||
+      nextPage > totalPages
+    ) {
+      return;
+    }
+
+    loadMoreLockRef.current = true;
+    const requestId = activeMenuRequestRef.current;
+
+    setIsLoadingMore(true);
+    setLoadMoreError(null);
+
+    fetchPublicCocktails({
+      page: nextPage,
+      pageSize: PAGE_SIZE,
+      categoryId,
+      tagId,
+    })
+      .then((result) => {
+        if (requestId !== activeMenuRequestRef.current) {
+          return;
+        }
+
+        setMenuItems((previousItems) => [...previousItems, ...result.list]);
+        setCurrentPage(result.pagination.page);
+        setTotalPages(result.pagination.totalPages);
+      })
+      .catch((error: Error) => {
+        if (requestId !== activeMenuRequestRef.current) {
+          return;
+        }
+
+        setLoadMoreError(error.message || '加载更多失败');
+      })
+      .finally(() => {
+        if (requestId === activeMenuRequestRef.current) {
+          loadMoreLockRef.current = false;
+          setIsLoadingMore(false);
+        }
+      });
+  }
+
+  function handleRetryLoadMore() {
+    handleLoadMore(currentPage + 1);
+  }
+
+  useEffect(() => {
+    const root = menuListScrollRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+
+    if (
+      !root ||
+      !sentinel ||
+      isInitialLoading ||
+      isLoadingMore ||
+      Boolean(menuError) ||
+      Boolean(loadMoreError) ||
+      menuItems.length === 0 ||
+      currentPage >= totalPages
+    ) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          handleLoadMore(currentPage + 1);
+        }
+      },
+      {
+        root,
+        rootMargin: '0px 0px 160px 0px',
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [
+    currentPage,
+    totalPages,
+    isInitialLoading,
+    isLoadingMore,
+    menuError,
+    loadMoreError,
+    menuItems.length,
+    categoryId,
+    tagId,
+  ]);
 
   return (
     <main className="menu-shell menu-shell-compact">
@@ -421,11 +486,11 @@ export function MenuPage() {
                   重新加载
                 </button>
               </div>
-            ) : isMenuLoading && !menuResult ? (
+            ) : isInitialLoading ? (
               <div className="menu-list-scroll">
                 <MenuListSkeleton />
               </div>
-            ) : menuResult && menuResult.list.length === 0 ? (
+            ) : menuItems.length === 0 ? (
               <div className="status-panel">
                 <h3>还没找到符合条件的酒</h3>
                 <p>换一个分类或风味标签试试。</p>
@@ -436,16 +501,29 @@ export function MenuPage() {
                 ) : null}
               </div>
             ) : (
-              <>
-                <div className="menu-list-scroll">
-                  <div className="menu-list">
-                    {menuResult?.list.map((item) => (
-                      <MenuRow fromSearch={fromSearch} item={item} key={item.id} />
-                    ))}
-                  </div>
+              <div className="menu-list-scroll" ref={menuListScrollRef}>
+                <div className="menu-list">
+                  {menuItems.map((item) => (
+                    <MenuRow fromSearch={fromSearch} item={item} key={item.id} />
+                  ))}
                 </div>
-                <Pagination page={page} totalPages={visiblePages} onSelectPage={handlePageChange} />
-              </>
+                {isLoadingMore ? <MenuLoadMoreSkeleton /> : null}
+                {loadMoreError ? (
+                  <div className="menu-load-more-retry">
+                    <FilterRetry
+                      buttonLabel="重试加载更多"
+                      message={loadMoreError}
+                      onRetry={handleRetryLoadMore}
+                    />
+                  </div>
+                ) : null}
+                <div
+                  aria-hidden="true"
+                  className="menu-load-more-sentinel"
+                  data-testid="menu-load-more-sentinel"
+                  ref={loadMoreSentinelRef}
+                />
+              </div>
             )}
           </section>
         </section>

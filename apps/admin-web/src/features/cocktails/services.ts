@@ -38,6 +38,12 @@ export function updateCocktail(id: number, payload: Record<string, unknown>) {
   });
 }
 
+export function deleteCocktail(id: number) {
+  return apiRequest(`/admin/cocktails/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export function uploadCocktailImage(file: File) {
   const formData = new FormData();
   formData.append('file', file);

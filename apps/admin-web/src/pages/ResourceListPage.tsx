@@ -6,6 +6,7 @@ import {
   resourceConfigs,
 } from '../features/resources/resource-config';
 import { formatCellValue, getValueByPath, toInputValue } from '../features/resources/resource-utils';
+import { moveItemById, persistSequentialSort } from '../features/sorting/utils';
 import {
   createResourceItem,
   deleteResourceItem,
@@ -20,17 +21,22 @@ interface ResourceListPageProps {
   title: string;
 }
 
+type ResourceItem = Record<string, unknown>;
+
 export function ResourceListPage({ resource, title }: ResourceListPageProps) {
   const config = useMemo<ResourceConfig>(() => resourceConfigs[resource], [resource]);
-  const [items, setItems] = useState<Array<Record<string, unknown>>>([]);
+  const [items, setItems] = useState<ResourceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reordering, setReordering] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [error, setError] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
   const [roleOptions, setRoleOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<number | null>(null);
 
   useEffect(() => {
     void loadList();
@@ -79,6 +85,7 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
   async function loadList() {
     setLoading(true);
     setError('');
+    resetDragState();
 
     try {
       const list = await fetchResourceList(resource, config.paginated);
@@ -105,6 +112,10 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
   }
 
   function openCreateEditor() {
+    if (reordering) {
+      return;
+    }
+
     setEditingId(null);
     setEditorOpen(true);
     setError('');
@@ -112,6 +123,10 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
   }
 
   async function openEditEditor(id: number) {
+    if (reordering) {
+      return;
+    }
+
     setEditingId(id);
     setEditorOpen(true);
     setError('');
@@ -161,6 +176,10 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
   }
 
   async function handleDelete(id: number) {
+    if (reordering) {
+      return;
+    }
+
     if (!window.confirm(resource === 'users' ? '确认禁用这个用户吗？' : '确认删除这条记录吗？')) {
       return;
     }
@@ -175,7 +194,54 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
     }
   }
 
+  async function handleDrop(targetId: number) {
+    if (!config.sortable || draggedId === null || draggedId === targetId || reordering) {
+      resetDragState();
+      return;
+    }
+
+    const previousItems = items;
+    const nextItems = moveItemById(items, getResourceItemId, draggedId, targetId);
+    if (nextItems === items) {
+      resetDragState();
+      return;
+    }
+
+    setItems(nextItems);
+    setReordering(true);
+    setError('');
+    resetDragState();
+
+    try {
+      await persistSequentialSort(nextItems, getResourceItemId, (id, sortOrder) =>
+        updateResourceItem(resource, id, { sortOrder }),
+      );
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : '保存排序失败';
+      setItems(previousItems);
+
+      try {
+        await persistSequentialSort(previousItems, getResourceItemId, (id, sortOrder) =>
+          updateResourceItem(resource, id, { sortOrder }),
+        );
+      } catch {
+        // Best-effort rollback; reload below to reflect the latest persisted state.
+      }
+
+      await loadList();
+      setError(message);
+    } finally {
+      setReordering(false);
+    }
+  }
+
+  function resetDragState() {
+    setDraggedId(null);
+    setDropTargetId(null);
+  }
+
   const fields = getFields();
+  const isCreateDisabled = (resource === 'users' && rolesLoading) || reordering;
 
   return (
     <section>
@@ -187,7 +253,7 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
         </div>
         <button
           className="primary-button"
-          disabled={resource === 'users' && rolesLoading}
+          disabled={isCreateDisabled}
           onClick={openCreateEditor}
           type="button"
         >
@@ -202,6 +268,7 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
           <table>
             <thead>
               <tr>
+                {config.sortable ? <th className="drag-handle-col">排序</th> : null}
                 {config.columns.map((column) => (
                   <th key={column.key}>{column.label}</th>
                 ))}
@@ -210,19 +277,66 @@ export function ResourceListPage({ resource, title }: ResourceListPageProps) {
             </thead>
             <tbody>
               {items.map((item) => {
-                const id = Number(item.id);
+                const id = getResourceItemId(item);
+                const isDragging = draggedId === id;
+                const isDropTarget = dropTargetId === id;
 
                 return (
-                  <tr key={id}>
+                  <tr
+                    key={id}
+                    className={`sortable-row${isDragging ? ' is-dragging' : ''}${isDropTarget ? ' is-drop-target' : ''}`}
+                    onDragEnter={() => {
+                      if (config.sortable && draggedId !== null && draggedId !== id) {
+                        setDropTargetId(id);
+                      }
+                    }}
+                    onDragOver={(event) => {
+                      if (config.sortable && draggedId !== null && draggedId !== id) {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = 'move';
+                        setDropTargetId(id);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      void handleDrop(id);
+                    }}
+                  >
+                    {config.sortable ? (
+                      <td className="drag-handle-cell">
+                        <button
+                          aria-label="拖动排序"
+                          className="drag-handle-button"
+                          disabled={reordering}
+                          draggable={!reordering}
+                          type="button"
+                          onDragEnd={resetDragState}
+                          onDragStart={(event) => {
+                            setDraggedId(id);
+                            setDropTargetId(id);
+                            event.dataTransfer.effectAllowed = 'move';
+                            event.dataTransfer.setData('text/plain', String(id));
+                          }}
+                        >
+                          ::
+                        </button>
+                      </td>
+                    ) : null}
                     {config.columns.map((column) => (
                       <td key={column.key}>{formatCellValue(getValueByPath(item, column.key))}</td>
                     ))}
                     <td className="actions-cell">
-                      <button className="inline-button" onClick={() => void openEditEditor(id)} type="button">
+                      <button
+                        className="inline-button"
+                        disabled={reordering}
+                        onClick={() => void openEditEditor(id)}
+                        type="button"
+                      >
                         编辑
                       </button>
                       <button
                         className="inline-button danger"
+                        disabled={reordering}
                         onClick={() => void handleDelete(id)}
                         type="button"
                       >
@@ -427,6 +541,10 @@ function buildPayload(resource: ResourceKey, values: Record<string, unknown>, is
   }
 
   return payload;
+}
+
+function getResourceItemId(item: ResourceItem) {
+  return Number(item.id);
 }
 
 function toOptionalString(value: unknown) {

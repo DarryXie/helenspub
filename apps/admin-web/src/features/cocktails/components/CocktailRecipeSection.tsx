@@ -18,9 +18,29 @@ export function CocktailRecipeSection({
       <div className="section-heading">
         <p className="eyebrow">Recipe</p>
         <h3>配方明细</h3>
-        <p>每一行代表一条原料记录，支持排序、用量和备注。发布前至少要有一条有效配方。</p>
+        <p>这里维护前台点单和制作时要用到的杯型、装饰、配方明细与做法说明。</p>
       </div>
       <div className="editor-stack">
+        <div className="cocktail-form-grid">
+          <label>
+            杯型
+            <input
+              value={form.glassType}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, glassType: event.target.value }))
+              }
+            />
+          </label>
+          <label>
+            装饰
+            <input
+              value={form.garnish}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, garnish: event.target.value }))
+              }
+            />
+          </label>
+        </div>
         {form.recipeItems.map((item, index) => (
           <div className="recipe-row" key={item.id}>
             <div className="recipe-row-head">
@@ -91,7 +111,7 @@ export function CocktailRecipeSection({
                   {ingredients.map((ingredient) => (
                     <option key={ingredient.id} value={ingredient.id}>
                       {ingredient.name}
-                      {ingredient.category ? ` · ${ingredient.category}` : ''}
+                      {ingredient.category ? ` / ${ingredient.category}` : ''}
                     </option>
                   ))}
                 </select>
@@ -156,6 +176,18 @@ export function CocktailRecipeSection({
         >
           新增一条配方
         </button>
+        <div className="cocktail-form-grid">
+          <label className="span-2">
+            做法说明
+            <textarea
+              rows={4}
+              value={form.method}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, method: event.target.value }))
+              }
+            />
+          </label>
+        </div>
       </div>
     </section>
   );

@@ -62,6 +62,7 @@ describe('CocktailDetailPage', () => {
     renderDetail();
 
     await screen.findByRole('heading', { name: 'Night Bloom' });
+    expect(screen.queryByText('Cocktail Detail')).not.toBeInTheDocument();
     expect(screen.queryByText('配方清单')).not.toBeInTheDocument();
     expect(screen.queryByText('饮用与制作')).not.toBeInTheDocument();
     expect(screen.queryByText('杯型')).not.toBeInTheDocument();

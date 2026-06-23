@@ -19,6 +19,82 @@ const mockedFetchPublicCocktails = vi.mocked(fetchPublicCocktails);
 const mockedFetchPublicCategories = vi.mocked(fetchPublicCategories);
 const mockedFetchPublicTags = vi.mocked(fetchPublicTags);
 
+class MockIntersectionObserver {
+  static instances: MockIntersectionObserver[] = [];
+
+  callback: IntersectionObserverCallback;
+  elements = new Set<Element>();
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    MockIntersectionObserver.instances.push(this);
+  }
+
+  disconnect() {
+    this.elements.clear();
+  }
+
+  observe(element: Element) {
+    this.elements.add(element);
+  }
+
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+
+  trigger(element: Element, isIntersecting = true) {
+    if (!this.elements.has(element)) {
+      return;
+    }
+
+    this.callback(
+      [{ isIntersecting, target: element } as IntersectionObserverEntry],
+      this as unknown as IntersectionObserver,
+    );
+  }
+
+  unobserve(element: Element) {
+    this.elements.delete(element);
+  }
+}
+
+function createCocktail(id: number, nameZh: string) {
+  return {
+    id,
+    nameZh,
+    nameEn: `${nameZh} EN`,
+    shortDescription: `${nameZh} 的描述`,
+    tasteProfile: '清爽',
+    coverImageUrl: null,
+    price: 58,
+    tags: [{ id: 7, name: '清爽' }],
+  };
+}
+
+function createPaginatedResult(page: number, totalPages: number, items: ReturnType<typeof createCocktail>[]) {
+  return {
+    list: items,
+    pagination: {
+      page,
+      pageSize: 10,
+      total: totalPages * 10,
+      totalPages,
+    },
+  };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((nextResolve, nextReject) => {
+    resolve = nextResolve;
+    reject = nextReject;
+  });
+
+  return { promise, resolve, reject };
+}
+
 function renderMenu(initialEntry = '/menu') {
   return render(
     <MemoryRouter basename="/menu" initialEntries={[initialEntry]}>
@@ -29,8 +105,19 @@ function renderMenu(initialEntry = '/menu') {
   );
 }
 
+function triggerLoadMore() {
+  const sentinel = screen.getByTestId('menu-load-more-sentinel');
+  const observer = MockIntersectionObserver.instances.at(-1);
+
+  expect(observer).toBeDefined();
+  observer?.trigger(sentinel, true);
+}
+
 describe('MenuPage', () => {
   beforeEach(() => {
+    MockIntersectionObserver.instances = [];
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
+
     mockedFetchPublicCategories.mockResolvedValue([
       { id: 1, name: '经典鸡尾酒' },
       { id: 2, name: '特调鸡尾酒' },
@@ -39,37 +126,22 @@ describe('MenuPage', () => {
       { id: 7, name: '清爽' },
       { id: 8, name: '甜' },
     ]);
-    mockedFetchPublicCocktails.mockResolvedValue({
-      list: [
-        {
-          id: 1,
-          nameZh: '琥珀微光',
-          nameEn: 'Amber Glow',
-          shortDescription: '柑橘、蜂蜜和轻微草本感，入口清亮。',
-          tasteProfile: '清爽',
-          coverImageUrl: null,
-          price: 58,
-          tags: [{ id: 7, name: '清爽' }],
-        },
-      ],
-      pagination: {
-        page: 1,
-        pageSize: 10,
-        total: 1,
-        totalPages: 1,
-      },
-    });
+    mockedFetchPublicCocktails.mockResolvedValue(
+      createPaginatedResult(1, 1, [createCocktail(1, '琥珀微光')]),
+    );
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.useRealTimers();
     vi.clearAllMocks();
   });
 
-  it('loads filters and cocktails on first render', async () => {
+  it('loads filters and cocktails on first render without pagination controls', async () => {
     renderMenu();
 
+    expect(document.querySelector('.menu-row-skeleton')).toBeTruthy();
     await screen.findByRole('heading', { name: '琥珀微光' });
 
     expect(mockedFetchPublicCategories).toHaveBeenCalledTimes(1);
@@ -80,6 +152,8 @@ describe('MenuPage', () => {
       categoryId: undefined,
       tagId: undefined,
     });
+    expect(screen.queryByRole('button', { name: '上一页' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '下一页' })).not.toBeInTheDocument();
   });
 
   it('updates the request after selecting a flavor tag', async () => {
@@ -100,32 +174,27 @@ describe('MenuPage', () => {
     });
   });
 
-  it('keeps existing filters when paging forward', async () => {
-    mockedFetchPublicCocktails.mockResolvedValue({
-      list: [
-        {
-          id: 1,
-          nameZh: '琥珀微光',
-          nameEn: 'Amber Glow',
-          shortDescription: '柑橘、蜂蜜和轻微草本感，入口清亮。',
-          tasteProfile: '清爽',
-          coverImageUrl: null,
-          tags: [{ id: 7, name: '清爽' }],
-        },
-      ],
-      pagination: {
-        page: 1,
-        pageSize: 10,
-        total: 24,
-        totalPages: 3,
-      },
+  it('loads the next page on intersection and appends items while showing a loading state', async () => {
+    const pageTwoDeferred = createDeferred<ReturnType<typeof createPaginatedResult>>();
+
+    mockedFetchPublicCocktails.mockImplementation(({ page, categoryId, tagId }) => {
+      if (page === 1) {
+        return Promise.resolve(createPaginatedResult(1, 2, [createCocktail(1, '琥珀微光')]));
+      }
+
+      if (page === 2) {
+        expect(categoryId).toBe(2);
+        expect(tagId).toBeUndefined();
+        return pageTwoDeferred.promise;
+      }
+
+      throw new Error(`unexpected page ${page}`);
     });
 
-    const user = userEvent.setup();
     renderMenu('/menu?categoryId=2');
 
     await screen.findByRole('heading', { name: '琥珀微光' });
-    await user.click(screen.getByRole('button', { name: '下一页' }));
+    triggerLoadMore();
 
     await waitFor(() => {
       expect(mockedFetchPublicCocktails).toHaveBeenLastCalledWith({
@@ -135,28 +204,64 @@ describe('MenuPage', () => {
         tagId: undefined,
       });
     });
+
+    expect(screen.getByText('正在加载更多...')).toBeInTheDocument();
+
+    pageTwoDeferred.resolve(createPaginatedResult(2, 2, [createCocktail(2, '丝绒酸')]));
+
+    await screen.findByRole('heading', { name: '丝绒酸' });
+    expect(screen.getByRole('heading', { name: '琥珀微光' })).toBeInTheDocument();
+    expect(screen.queryByText('正在加载更多...')).not.toBeInTheDocument();
+  });
+
+  it('keeps existing items when load more fails and retries the same page', async () => {
+    let pageTwoAttempts = 0;
+
+    mockedFetchPublicCocktails.mockImplementation(({ page }) => {
+      if (page === 1) {
+        return Promise.resolve(createPaginatedResult(1, 2, [createCocktail(1, '琥珀微光')]));
+      }
+
+      if (page === 2) {
+        pageTwoAttempts += 1;
+
+        if (pageTwoAttempts === 1) {
+          return Promise.reject(new Error('加载更多失败'));
+        }
+
+        return Promise.resolve(createPaginatedResult(2, 2, [createCocktail(2, '落日漂流')]));
+      }
+
+      throw new Error(`unexpected page ${page}`);
+    });
+
+    renderMenu();
+
+    await screen.findByRole('heading', { name: '琥珀微光' });
+    triggerLoadMore();
+
+    await screen.findByText('加载更多失败');
+    expect(screen.getByRole('heading', { name: '琥珀微光' })).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '重试加载更多' }));
+
+    await waitFor(() => {
+      expect(mockedFetchPublicCocktails).toHaveBeenLastCalledWith({
+        page: 2,
+        pageSize: 10,
+        categoryId: undefined,
+        tagId: undefined,
+      });
+    });
+
+    await screen.findByRole('heading', { name: '落日漂流' });
   });
 
   it('shows an error state and retries loading', async () => {
     mockedFetchPublicCocktails
       .mockRejectedValueOnce(new Error('菜单服务暂时不可用'))
-      .mockResolvedValueOnce({
-        list: [
-          {
-            id: 9,
-            nameZh: '丝绒酸',
-            shortDescription: '酸甜平衡，酒体顺滑。',
-            coverImageUrl: null,
-            tags: [],
-          },
-        ],
-        pagination: {
-          page: 1,
-          pageSize: 10,
-          total: 1,
-          totalPages: 1,
-        },
-      });
+      .mockResolvedValueOnce(createPaginatedResult(1, 1, [createCocktail(9, '丝绒酸')]));
 
     const user = userEvent.setup();
     renderMenu();
@@ -164,6 +269,6 @@ describe('MenuPage', () => {
     await screen.findByText('菜单暂时没有加载出来');
     await user.click(screen.getByRole('button', { name: '重新加载' }));
 
-    await screen.findByText('丝绒酸');
+    await screen.findByRole('heading', { name: '丝绒酸' });
   });
 });

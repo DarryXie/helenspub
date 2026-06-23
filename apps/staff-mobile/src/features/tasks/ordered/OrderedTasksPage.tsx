@@ -13,6 +13,7 @@ import {
   sortTasksByCreatedAtAsc,
   type OrderedTaskFilter,
 } from '../shared/task-status';
+import { useWorkbenchTaskCounts } from '../shared/useWorkbenchTaskCounts';
 import { WorkbenchTabs } from '../shared/WorkbenchTabs';
 
 const PAGE_SIZE = 100;
@@ -68,6 +69,12 @@ export function OrderedTasksPage() {
   const [activeTask, setActiveTask] = useState<ProductionTaskSummary | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    counts,
+    error: countsError,
+    isLoading: isCountsLoading,
+    refreshCounts,
+  } = useWorkbenchTaskCounts(retryToken);
 
   const activeFilter = parseFilter(searchParams.get('status'));
   const orderedTasks = useMemo(() => sortTasksByCreatedAtAsc(result?.list ?? []), [result]);
@@ -137,6 +144,7 @@ export function OrderedTasksPage() {
       });
 
       setStatusError(null);
+      refreshCounts();
       setActiveTask(null);
     } catch (requestError) {
       if (requestError instanceof Error) {
@@ -164,7 +172,16 @@ export function OrderedTasksPage() {
               onClick={() => updateFilter(filter.value)}
               type="button"
             >
-              {filter.label}
+              <span>{filter.label}</span>
+              {filter.value === 'pending' || filter.value === 'completed' ? (
+                <span className="status-btn-count">
+                  {isCountsLoading || countsError
+                    ? '--'
+                    : filter.value === 'pending'
+                      ? counts.pendingCount
+                      : counts.completedCount}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
