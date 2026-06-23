@@ -42,11 +42,14 @@ function OrderedTaskRow({
   task: ProductionTaskSummary;
   onClick: () => void;
 }) {
+  const remark = task.remark?.trim();
+
   return (
     <button className="order-flow-item" onClick={onClick} type="button">
       <div className="order-left">
         <span className="order-title">{task.cocktailNameSnapshot}</span>
         <span className="order-time">下单时间：{formatDateTime(task.createdAt)}</span>
+        {remark ? <span className="order-remark">备注：{remark}</span> : null}
       </div>
       <div className="order-right">
         <TaskStatusBadge status={task.status} />
@@ -177,7 +180,7 @@ export function OrderedTasksPage() {
             </div>
           ) : visibleTasks.length === 0 ? (
             <EmptyState
-              title="这一区暂时没有记录"
+              title="这一栏暂时没有记录"
               description="切换筛选看看其他状态，或者先回到点单页创建新的待制作。"
             />
           ) : (

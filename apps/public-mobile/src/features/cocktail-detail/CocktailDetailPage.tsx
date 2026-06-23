@@ -230,28 +230,22 @@ export function CocktailDetailPage() {
                 <dd>{detail.baseSpirit}</dd>
               </>
             ) : null}
-            {detail.glassType ? (
-              <>
-                <dt>杯型</dt>
-                <dd>{detail.glassType}</dd>
-              </>
-            ) : null}
             {detail.tasteProfile ? (
               <>
                 <dt>口感</dt>
                 <dd>{detail.tasteProfile}</dd>
               </>
             ) : null}
-            {detail.scene ? (
-              <>
-                <dt>场景</dt>
-                <dd>{detail.scene}</dd>
-              </>
-            ) : null}
             {detail.abvNote ? (
               <>
                 <dt>酒精感受</dt>
                 <dd>{detail.abvNote}</dd>
+              </>
+            ) : null}
+            {detail.description ? (
+              <>
+                <dt>详情描述</dt>
+                <dd>{detail.description}</dd>
               </>
             ) : null}
           </dl>

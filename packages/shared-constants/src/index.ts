@@ -10,6 +10,8 @@ export const TASK_STATUS: Record<TaskStatus, TaskStatus> = {
   pending: 'pending',
   in_progress: 'in_progress',
   completed: 'completed',
+  delivered: 'delivered',
+  cancelled: 'cancelled',
 };
 
 export const COCKTAIL_PUBLISH_STATUS: Record<CocktailPublishStatus, CocktailPublishStatus> = {

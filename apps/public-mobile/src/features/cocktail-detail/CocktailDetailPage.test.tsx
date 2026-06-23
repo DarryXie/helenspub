@@ -64,6 +64,10 @@ describe('CocktailDetailPage', () => {
     await screen.findByRole('heading', { name: 'Night Bloom' });
     expect(screen.queryByText('配方清单')).not.toBeInTheDocument();
     expect(screen.queryByText('饮用与制作')).not.toBeInTheDocument();
+    expect(screen.queryByText('杯型')).not.toBeInTheDocument();
+    expect(screen.queryByText('场景')).not.toBeInTheDocument();
+    expect(screen.getByText('详情描述')).toBeInTheDocument();
+    expect(screen.getByText('一杯适合夜晚慢慢喝的琴酒鸡尾酒。')).toBeInTheDocument();
     expect(screen.getByText('¥68.00')).toBeInTheDocument();
   });
 

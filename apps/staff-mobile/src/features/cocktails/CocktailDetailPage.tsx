@@ -112,7 +112,7 @@ export function CocktailDetailPage() {
         <section className="detail-section">
           <div className="detail-section-header">
             <p className="app-eyebrow">Recipe</p>
-            <h2>配方清单</h2>
+            <h2>{detail.nameZh}</h2>
           </div>
           <ol className="recipe-list">
             {detail.recipeItems.map((item) => (
@@ -132,16 +132,18 @@ export function CocktailDetailPage() {
             <p className="app-eyebrow">Method</p>
             <h2>制作与出杯</h2>
           </div>
-          {detail.description ? <p className="detail-body">{detail.description}</p> : null}
+          {detail.glassType ? (
+            <div className="detail-copy-block">
+              <p>{detail.glassType}</p>
+            </div>
+          ) : null}
           {detail.method ? (
             <div className="detail-copy-block">
-              <h3>制作方法</h3>
               <p>{detail.method}</p>
             </div>
           ) : null}
           {detail.garnish ? (
             <div className="detail-copy-block">
-              <h3>装饰说明</h3>
               <p>{detail.garnish}</p>
             </div>
           ) : null}

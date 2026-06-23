@@ -68,7 +68,6 @@ export function LoginPage() {
               autoComplete="username"
               name="username"
               onChange={(event) => setUsername(event.target.value)}
-              placeholder="例如 staff01"
               required
               type="text"
               value={username}
@@ -81,7 +80,6 @@ export function LoginPage() {
               autoComplete="current-password"
               name="password"
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="输入登录密码"
               required
               type="password"
               value={password}

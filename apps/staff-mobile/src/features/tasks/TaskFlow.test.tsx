@@ -43,7 +43,7 @@ describe('OrderedTasksPage', () => {
           cocktailId: 12,
           cocktailNameSnapshot: '尼格罗尼',
           quantity: 1,
-          remark: null,
+          remark: '少冰，杯口不用糖',
           status: 'completed',
           priority: 3,
           createdAt: '2026-06-18T11:05:00.000Z',
@@ -62,7 +62,7 @@ describe('OrderedTasksPage', () => {
           cocktailId: 11,
           cocktailNameSnapshot: '莫吉托',
           quantity: 1,
-          remark: null,
+          remark: '   ',
           status: 'pending',
           priority: 3,
           createdAt: '2026-06-18T11:00:00.000Z',
@@ -117,7 +117,7 @@ describe('OrderedTasksPage', () => {
           id: 5,
           taskNo: 'PT202606180005',
           cocktailId: 15,
-          cocktailNameSnapshot: '黛琦莉',
+          cocktailNameSnapshot: '玛格丽特',
           quantity: 1,
           remark: null,
           status: 'cancelled',
@@ -135,18 +135,19 @@ describe('OrderedTasksPage', () => {
       ],
       pagination: {
         page: 1,
-        pageSize: 200,
+        pageSize: 100,
         total: 5,
         totalPages: 1,
       },
     });
+
     mockedUpdateProductionTaskStatus.mockResolvedValue({
       id: 1,
       taskNo: 'PT202606180001',
       cocktailId: 11,
       cocktailNameSnapshot: '莫吉托',
       quantity: 1,
-      remark: null,
+      remark: '   ',
       status: 'completed',
       priority: 3,
       createdAt: '2026-06-18T11:00:00.000Z',
@@ -178,10 +179,22 @@ describe('OrderedTasksPage', () => {
     });
 
     const titles = screen
-      .getAllByText(/莫吉托|尼格罗尼|马天尼|古典|黛琦莉/)
+      .getAllByText(/莫吉托|尼格罗尼|马天尼|古典|玛格丽特/)
       .map((node) => node.textContent);
 
-    expect(titles).toEqual(['莫吉托', '尼格罗尼', '马天尼', '古典', '黛琦莉']);
+    expect(titles).toEqual(['莫吉托', '尼格罗尼', '马天尼', '古典', '玛格丽特']);
+  });
+
+  it('shows remarks only when the task remark has non-whitespace content', async () => {
+    renderPage();
+
+    const taskWithRemark = await screen.findByRole('button', { name: /尼格罗尼/ });
+    expect(within(taskWithRemark).getByText('备注：少冰，杯口不用糖')).toBeInTheDocument();
+
+    const taskWithoutRemark = screen.getByRole('button', { name: /莫吉托/ });
+    expect(within(taskWithoutRemark).queryByText(/备注：/)).not.toBeInTheDocument();
+
+    expect(screen.getAllByText(/备注：/)).toHaveLength(1);
   });
 
   it('filters pending and in-progress records together under 待制作', async () => {
@@ -194,7 +207,7 @@ describe('OrderedTasksPage', () => {
     expect(screen.getByText('莫吉托')).toBeInTheDocument();
     expect(screen.getByText('马天尼')).toBeInTheDocument();
     expect(screen.queryByText('古典')).not.toBeInTheDocument();
-    expect(screen.queryByText('黛琦莉')).not.toBeInTheDocument();
+    expect(screen.queryByText('玛格丽特')).not.toBeInTheDocument();
   });
 
   it('opens the status modal and updates a task status', async () => {
@@ -204,6 +217,7 @@ describe('OrderedTasksPage', () => {
     await screen.findByText('莫吉托');
     await user.click(screen.getByRole('button', { name: /莫吉托/ }));
     const dialog = screen.getByRole('dialog');
+
     expect(within(dialog).getByRole('button', { name: '制作中' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: '制作完成' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: '已送达' })).toBeInTheDocument();

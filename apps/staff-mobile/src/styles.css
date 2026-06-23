@@ -804,6 +804,13 @@ img {
 .order-left {
   display: grid;
   gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.order-right {
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .order-title {
@@ -815,6 +822,17 @@ img {
 .order-time {
   color: #999999;
   font-size: 11px;
+}
+
+.order-remark {
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .status-badge {
@@ -1130,8 +1148,9 @@ img {
   margin-top: 18px;
 }
 
-.detail-copy-block h3 {
-  margin: 0 0 8px;
+.detail-copy-block p {
+  margin: 0;
+  font-weight: 700;
 }
 
 .detail-skeleton {

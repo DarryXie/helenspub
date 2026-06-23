@@ -2,15 +2,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API_BASE_URL, resolveApiAssetUrl } from './http';
 import { fetchPublicCocktails, fetchPublicCocktailDetail } from './public-menu';
 
+function createResponse(body: unknown) {
+  return {
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'application/json; charset=utf-8' }),
+    text: async () => JSON.stringify(body),
+  } as Response;
+}
+
 describe('public-menu services', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it('maps filters into the public cocktail list request', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      createResponse({
         code: 0,
         message: 'ok',
         data: {
@@ -23,7 +31,7 @@ describe('public-menu services', () => {
           },
         },
       }),
-    } as Response);
+    );
 
     await fetchPublicCocktails({
       page: 2,
@@ -40,9 +48,8 @@ describe('public-menu services', () => {
   });
 
   it('requests public cocktail detail by id', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      createResponse({
         code: 0,
         message: 'ok',
         data: {
@@ -54,7 +61,7 @@ describe('public-menu services', () => {
           imageUrls: [],
         },
       }),
-    } as Response);
+    );
 
     await fetchPublicCocktailDetail(12);
 
@@ -66,7 +73,7 @@ describe('public-menu services', () => {
 
   it('resolves relative asset urls against the API origin', () => {
     expect(resolveApiAssetUrl('/uploads/cocktails/negroni.jpg')).toBe(
-      'http://127.0.0.1:3000/uploads/cocktails/negroni.jpg',
+      'http://localhost:3000/uploads/cocktails/negroni.jpg',
     );
     expect(resolveApiAssetUrl('https://images.example.com/drink.jpg')).toBe(
       'https://images.example.com/drink.jpg',

@@ -121,5 +121,13 @@ describe('cocktail browse and handoff flows', () => {
     });
     expect(backLink.getAttribute('href')).toContain('/tasks/order');
     expect(screen.queryByRole('link', { name: '去点单' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Negroni' })).toBeInTheDocument();
+    expect(screen.getByText('Old Fashioned')).toBeInTheDocument();
+    expect(screen.getByText('搅拌出杯')).toBeInTheDocument();
+    expect(screen.getByText('橙皮')).toBeInTheDocument();
+    expect(screen.queryByText('杯型')).not.toBeInTheDocument();
+    expect(screen.queryByText('制作方法')).not.toBeInTheDocument();
+    expect(screen.queryByText('装饰说明')).not.toBeInTheDocument();
+    expect(screen.queryByText('经典苦味鸡尾酒')).not.toBeInTheDocument();
   });
 });

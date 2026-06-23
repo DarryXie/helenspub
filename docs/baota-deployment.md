@@ -1,227 +1,169 @@
-# 宝塔部署步骤
+# 宝塔部署说明
 
-本文按当前项目的实际情况编写，目标部署结果如下：
+本文档记录 `helenspub.xyz` 项目当前的服务器部署结果、联调入口、Nginx 配置要点，以及后续更新流程。
 
-- 主域名：`helenspub.xyz`
-- 菜单：`/menu/`
-- 后台：`/admin/`
-- 员工端：`/staff/`
-- API：`/api/v1`
-- 上传文件：`/uploads`
+## 1. 当前部署状态
+
+- 部署时间：`2026-06-22`
+- 服务器：`139.196.206.35`
+- 域名：`helenspub.xyz`
 - 运行方式：`Nginx + PM2 + MySQL`
-
-相关样板文件：
-
-- Nginx 配置参考：`scripts/deploy/baota-nginx-helenspub.conf`
-- PM2 配置参考：`scripts/deploy/pm2-helenspub-api.config.cjs`
-
-## 1. 宝塔面板准备
-
-在宝塔里确认已安装：
-
-- `Nginx`
-- `Node.js 20`
-- `PM2`
-- `MySQL 5.7`
-
-建议目录这样规划：
-
-- 仓库目录：`/www/wwwroot/helenspub/repo`
-- 站点静态目录：`/www/wwwroot/helenspub/www`
+- API 进程名：`helenspub-api`
+- API 监听端口：`3000`
+- 静态站点根目录：`/www/wwwroot/helenspub/www`
 - 上传目录：`/www/wwwroot/helenspub/uploads`
 
-## 2. 创建站点
+当前已经完成：
 
-在宝塔：
+- 后端 API 已构建并启动
+- `admin-web` 已发布到 `/admin/`
+- `public-mobile` 已发布到 `/menu/`
+- `staff-mobile` 已发布到 `/staff/`
+- Nginx 已配置根路径跳转到 `/menu/`
+- `/api/v1/` 已反向代理到 `127.0.0.1:3000`
+- `/uploads/` 已映射到服务器本地上传目录
 
-1. 打开 `网站`
-2. 新建站点，域名填 `helenspub.xyz`
-3. 根目录填：`/www/wwwroot/helenspub/www`
-4. PHP 版本选 `纯静态`
-5. 先不处理 HTTPS，等站点跑通后再上传证书
+## 2. 当前联调结论
 
-创建完成后，确认下面目录存在：
+服务器侧联调已经通过，说明项目本身部署成功。
 
-```bash
-mkdir -p /www/wwwroot/helenspub/repo
-mkdir -p /www/wwwroot/helenspub/www
-mkdir -p /www/wwwroot/helenspub/uploads
-mkdir -p /www/wwwroot/helenspub/logs
-```
+可正常访问：
 
-## 3. 拉取代码
+- `http://139.196.206.35/menu/`
+- `http://139.196.206.35/admin/login`
+- `http://139.196.206.35/staff/login`
 
-在宝塔终端执行：
+服务器内网域名联调也通过：
 
-```bash
-cd /www/wwwroot/helenspub
-git clone https://github.com/DarryXie/helenspub.git repo
-cd /www/wwwroot/helenspub/repo
-```
+- `http://helenspub.xyz/menu/`
+- `http://helenspub.xyz/admin/login`
+- `http://helenspub.xyz/staff/login`
+- `http://helenspub.xyz/api/v1/public/categories`
 
-如果目录已存在，更新代码用：
+但公网直接通过域名访问时，当前会被阿里云返回：
 
-```bash
-cd /www/wwwroot/helenspub/repo
-git pull
-```
+- `403 Forbidden`
+- `Non-compliance ICP Filing`
 
-## 4. 创建数据库
+这说明现在的阻塞点不是代码、不是 Nginx、也不是 PM2，而是阿里云对域名的备案放行限制。
 
-在宝塔 `数据库` 页面创建：
+## 3. 现阶段可用联调地址
 
-- 数据库名：`helenspub`
-- 用户名：`helenspub`
-- 密码：用你自己的生产密码
+在域名备案放行之前，建议先用服务器公网 IP 做功能联调：
 
-确认本机可连地址是：
+- 菜单：`http://139.196.206.35/menu/`
+- 后台：`http://139.196.206.35/admin/login`
+- 员工端：`http://139.196.206.35/staff/login`
 
-```text
-127.0.0.1:3306
-```
+根路径会自动跳转：
 
-## 5. 写生产环境变量
+- `http://139.196.206.35/` -> `http://139.196.206.35/menu/`
 
-在仓库根目录创建 `.env`：
+## 4. 已确认的服务器环境
 
-```bash
-cd /www/wwwroot/helenspub/repo
-cat > .env <<'EOF'
+- Nginx：`1.28.3`
+- Node.js：`v20.20.2`
+- PM2：`5.x`
+- MySQL：`5.7.40`
+
+项目目录规划：
+
+- 代码目录：`/www/wwwroot/helenspub/repo`
+- 静态目录：`/www/wwwroot/helenspub/www`
+- 上传目录：`/www/wwwroot/helenspub/uploads`
+- 日志目录：`/www/wwwroot/helenspub/logs`
+
+## 5. 当前生产环境变量
+
+服务器 `.env` 已按以下配置写入：
+
+```env
 NODE_ENV=production
 PORT=3000
-DATABASE_URL=mysql://DB_USER:DB_PASSWORD@127.0.0.1:3306/helenspub
-JWT_SECRET=CHANGE_ME_TO_A_LONG_RANDOM_SECRET
+DATABASE_URL=mysql://helenspub:FKbXTH2rJinWAMX6@127.0.0.1:3306/helenspub
+JWT_SECRET=my_super_secret_key_2026_xyz
 JWT_EXPIRES_IN=24h
 UPLOAD_DIR=/www/wwwroot/helenspub/uploads
 UPLOAD_BASE_URL=/uploads
 DEFAULT_ADMIN_USERNAME=admin
-DEFAULT_ADMIN_PASSWORD=CHANGE_ME_ADMIN_PASSWORD
+DEFAULT_ADMIN_PASSWORD=admin123456
 VITE_API_BASE_URL=http://helenspub.xyz/api/v1
 VITE_API_ORIGIN=http://helenspub.xyz
-EOF
-```
-
-注意：
-
-- 如果你已经配好 HTTPS，再把 `http://` 改成 `https://`
-- 如果你先用 HTTP 联调，后面切 HTTPS 后要重新构建前端
-
-## 6. 安装依赖并构建
-
-在宝塔终端执行：
-
-```bash
-cd /www/wwwroot/helenspub/repo
-corepack enable
-corepack pnpm install --frozen-lockfile
-corepack pnpm --filter api-server prisma generate
-corepack pnpm --filter api-server prisma migrate deploy
-corepack pnpm --filter api-server prisma db seed
-corepack pnpm build
 ```
 
 说明：
 
-- `prisma migrate deploy` 用于生产库
-- 当前项目 API 构建入口实际是 `apps/api-server/dist/src/main.js`
+- 当前按 HTTP 联调，所以前端构建使用的是 `http://helenspub.xyz`
+- 后续切 HTTPS 后，需要重新构建前端
 
-## 7. 发布前端静态文件
+## 6. Nginx 配置目标
 
-先清空旧静态目录，再复制新的构建产物：
+当前站点应满足以下规则：
 
-```bash
-cd /www/wwwroot/helenspub/repo
-mkdir -p /www/wwwroot/helenspub/www/admin
-mkdir -p /www/wwwroot/helenspub/www/menu
-mkdir -p /www/wwwroot/helenspub/www/staff
+- `/` 跳转到 `/menu/`
+- `/admin/` 提供后台静态资源
+- `/menu/` 提供菜单静态资源
+- `/staff/` 提供员工端静态资源
+- `/api/v1/` 反向代理到 `127.0.0.1:3000`
+- `/uploads/` 映射到 `/www/wwwroot/helenspub/uploads/`
 
-rm -rf /www/wwwroot/helenspub/www/admin/*
-rm -rf /www/wwwroot/helenspub/www/menu/*
-rm -rf /www/wwwroot/helenspub/www/staff/*
+项目内参考文件：
 
-cp -r apps/admin-web/dist/* /www/wwwroot/helenspub/www/admin/
-cp -r apps/public-mobile/dist/* /www/wwwroot/helenspub/www/menu/
-cp -r apps/staff-mobile/dist/* /www/wwwroot/helenspub/www/staff/
-```
+- Nginx 配置样板：`scripts/deploy/baota-nginx-helenspub.conf`
+- PM2 配置样板：`scripts/deploy/pm2-helenspub-api.config.cjs`
 
-## 8. 用 PM2 启动 API
-
-推荐方式一：直接用配置文件启动
-
-```bash
-cd /www/wwwroot/helenspub/repo
-pm2 start scripts/deploy/pm2-helenspub-api.config.cjs
-pm2 save
-```
-
-推荐方式二：直接命令启动
-
-```bash
-cd /www/wwwroot/helenspub/repo
-pm2 start apps/api-server/dist/src/main.js --name helenspub-api --cwd /www/wwwroot/helenspub/repo
-pm2 save
-```
-
-常用检查命令：
+## 7. PM2 常用命令
 
 ```bash
 pm2 list
 pm2 logs helenspub-api
 pm2 restart helenspub-api
 pm2 stop helenspub-api
+pm2 delete helenspub-api
+pm2 save
 ```
 
-## 9. 配置 Nginx
-
-在宝塔：
-
-1. 打开 `网站`
-2. 选中 `helenspub.xyz`
-3. 打开 `设置`
-4. 打开 `配置文件`
-5. 参考 `scripts/deploy/baota-nginx-helenspub.conf`
-6. 把站点 `server {}` 内容替换为对应配置，或至少把其中的 `location` 规则合并进去
-7. 保存并重载 Nginx
-
-核心点：
-
-- `/` 跳转到 `/menu/`
-- `/admin/` 指向后台静态目录
-- `/menu/` 指向公开前台静态目录
-- `/staff/` 指向员工端静态目录
-- `/api/v1/` 反向代理到 `127.0.0.1:3000`
-- `/uploads/` 直接读取 `/www/wwwroot/helenspub/uploads/`
-
-## 10. 联调检查
-
-先检查 API：
+API 实际启动入口：
 
 ```bash
-curl http://127.0.0.1:3000/api/v1/public/categories
+apps/api-server/dist/src/main.js
 ```
 
-再检查域名访问：
+## 8. 后续代码更新流程
 
-- `http://helenspub.xyz/`
-- `http://helenspub.xyz/menu/`
-- `http://helenspub.xyz/admin/login`
-- `http://helenspub.xyz/staff/login`
+这台服务器当前没有现成可用的 `git`，所以本次是通过上传代码包的方式部署的。
 
-如果根路径不跳转，优先检查 Nginx 配置是否生效。
+后续更新有两种选择：
 
-## 11. 上传 HTTPS 证书
+1. 继续沿用当前方式，由我重新打包上传并发布
+2. 服务器补装 `git` 后，改成 `git pull` 更新
 
-在宝塔：
+如果已经拿到新代码并放入 `/www/wwwroot/helenspub/repo`，标准更新步骤如下：
 
-1. 打开 `网站`
-2. 进入 `helenspub.xyz`
-3. 打开 `SSL`
-4. 上传阿里云证书
-5. 开启强制 HTTPS
+```bash
+cd /www/wwwroot/helenspub/repo
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter api-server prisma migrate deploy
+corepack pnpm build
+rm -rf /www/wwwroot/helenspub/www/admin/*
+rm -rf /www/wwwroot/helenspub/www/menu/*
+rm -rf /www/wwwroot/helenspub/www/staff/*
+cp -r apps/admin-web/dist/* /www/wwwroot/helenspub/www/admin/
+cp -r apps/public-mobile/dist/* /www/wwwroot/helenspub/www/menu/
+cp -r apps/staff-mobile/dist/* /www/wwwroot/helenspub/www/staff/
+pm2 restart helenspub-api
+```
 
-证书生效后，把 `.env` 里的前端地址改成：
+## 9. 切换 HTTPS 时要做的事
 
-```text
+当你在宝塔里上传好 SSL 证书后，需要做两步：
+
+1. 在宝塔站点里开启 `SSL` 和强制 `HTTPS`
+2. 把 `.env` 中前端地址改成 HTTPS 后重新构建前端
+
+修改为：
+
+```env
 VITE_API_BASE_URL=https://helenspub.xyz/api/v1
 VITE_API_ORIGIN=https://helenspub.xyz
 ```
@@ -239,46 +181,14 @@ cp -r apps/public-mobile/dist/* /www/wwwroot/helenspub/www/menu/
 cp -r apps/staff-mobile/dist/* /www/wwwroot/helenspub/www/staff/
 ```
 
-## 12. 计划任务建议
+## 10. 下一步最需要处理的事情
 
-在宝塔 `计划任务` 里建议至少配两个：
+当前最重要的不是改代码，而是放行域名访问。
 
-### 数据库备份
+你需要确认：
 
-- 任务类型：`数据库备份`
-- 数据库：`helenspub`
-- 执行周期：`每天凌晨`
+- `helenspub.xyz` 是否已经完成并通过中国大陆站点备案
+- 阿里云当前 ECS / 轻量应用服务器是否仍在做备案拦截
+- 宝塔或阿里云是否还挂着额外的网站防护、CDN 或 WAF
 
-### 代码更新后自动重启 API
-
-如果你以后手动更新代码后忘记重启，可以用 Shell 脚本任务：
-
-```bash
-cd /www/wwwroot/helenspub/repo && pm2 restart helenspub-api
-```
-
-## 13. 后续更新流程
-
-以后更新版本按这个顺序：
-
-```bash
-cd /www/wwwroot/helenspub/repo
-git pull
-corepack pnpm install --frozen-lockfile
-corepack pnpm --filter api-server prisma migrate deploy
-corepack pnpm build
-rm -rf /www/wwwroot/helenspub/www/admin/*
-rm -rf /www/wwwroot/helenspub/www/menu/*
-rm -rf /www/wwwroot/helenspub/www/staff/*
-cp -r apps/admin-web/dist/* /www/wwwroot/helenspub/www/admin/
-cp -r apps/public-mobile/dist/* /www/wwwroot/helenspub/www/menu/
-cp -r apps/staff-mobile/dist/* /www/wwwroot/helenspub/www/staff/
-pm2 restart helenspub-api
-```
-
-## 14. 目前最容易踩的坑
-
-- `apps/api-server/package.json` 里的 `start:prod` 不是当前实际构建产物路径，生产启动请用 `apps/api-server/dist/src/main.js`
-- 切 HTTPS 后如果前端还是旧的 `http://` API 地址，会产生混合内容问题，需要重新构建
-- 上传目录不要放到前端构建目录里，应该独立放在 `/www/wwwroot/helenspub/uploads`
-- 如果宝塔里根站点路径不是 `/www/wwwroot/helenspub/www`，Nginx 里的 `root` 也要一起改
+只要域名层拦截解除，现有部署就可以直接用域名联调。
