@@ -147,6 +147,7 @@ describe('MenuPage', () => {
 
     expect(document.querySelector('.menu-row-skeleton')).toBeTruthy();
     await screen.findByRole('heading', { name: '琥珀微光' });
+    expect(document.querySelector('.menu-row-price')?.textContent).toContain('58');
 
     expect(mockedFetchPublicCategories).toHaveBeenCalledTimes(1);
     expect(mockedFetchPublicTags).toHaveBeenCalledTimes(1);
@@ -194,6 +195,8 @@ describe('MenuPage', () => {
         tagId: undefined,
       });
     });
+
+    expect(document.querySelector('.menu-row-price')?.textContent).toContain('58');
   });
 
   it('loads the next page on intersection and appends items while showing a loading state', async () => {
