@@ -90,7 +90,7 @@ img {
 }
 
 .menu-shell-compact {
-  width: min(100vw, 1280px);
+  width: 100%;
   max-width: 100%;
   height: 100dvh;
   padding: 0;
@@ -306,6 +306,10 @@ img {
 .menu-tag-strip,
 .pill-skeleton-row {
   box-sizing: border-box;
+  padding-left: 8px;
+  padding-right: 8px;
+  scroll-padding-left: 8px;
+  scroll-padding-right: 8px;
   padding-left: max(8px, env(safe-area-inset-left));
   padding-right: max(8px, env(safe-area-inset-right));
   scroll-padding-left: max(8px, env(safe-area-inset-left));
@@ -355,11 +359,9 @@ img {
   display: flex;
   align-items: center;
   min-height: 61px;
-  padding:
-    14px
-    max(12px, env(safe-area-inset-right))
-    14px
-    max(12px, env(safe-area-inset-left));
+  padding: 14px 12px;
+  padding-right: max(12px, env(safe-area-inset-right));
+  padding-left: max(12px, env(safe-area-inset-left));
   background: #fafafa;
   border: 0;
   border-bottom: 1px solid #eaeaea;
@@ -386,11 +388,9 @@ img {
 .menu-list-scroll {
   min-height: 0;
   overflow-y: auto;
-  padding:
-    0
-    max(20px, env(safe-area-inset-right))
-    0
-    max(16px, env(safe-area-inset-left));
+  padding: 0 20px 0 16px;
+  padding-right: max(20px, env(safe-area-inset-right));
+  padding-left: max(16px, env(safe-area-inset-left));
   scrollbar-width: none;
   width: 100%;
   max-width: 100%;
@@ -891,7 +891,7 @@ img {
   }
 
   .menu-shell-compact {
-    width: 100vw;
+    width: 100%;
   }
 
   .menu-compact-layout {
@@ -919,7 +919,7 @@ img {
 
 @media (min-width: 920px) {
   .menu-shell-compact {
-    width: 100vw;
+    width: 100%;
   }
 
   .menu-compact-layout {
@@ -949,7 +949,7 @@ img {
   }
 
   .menu-shell-compact {
-    width: 100vw;
+    width: 100%;
   }
 
   .menu-compact-layout {
@@ -1122,13 +1122,13 @@ img {
     white-space: nowrap;
     width: max-content;
     min-width: 100%;
-    padding:
-      0
-      max(12px, env(safe-area-inset-right))
-      10px
-      max(12px, env(safe-area-inset-left));
+    padding: 0 12px 10px 12px;
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-left: max(12px, env(safe-area-inset-left));
     box-sizing: border-box;
     scrollbar-width: none;
+    scroll-padding-left: 12px;
+    scroll-padding-right: 12px;
     scroll-padding-left: max(12px, env(safe-area-inset-left));
     scroll-padding-right: max(12px, env(safe-area-inset-right));
   }
@@ -1172,19 +1172,15 @@ img {
 
   .menu-tag-bar {
     min-height: 56px;
-    padding:
-      10px
-      max(12px, env(safe-area-inset-right))
-      10px
-      max(12px, env(safe-area-inset-left));
+    padding: 10px 12px;
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-left: max(12px, env(safe-area-inset-left));
   }
 
   .menu-list-scroll {
-    padding:
-      0
-      max(16px, env(safe-area-inset-right))
-      0
-      max(12px, env(safe-area-inset-left));
+    padding: 0 16px 0 12px;
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-left: max(12px, env(safe-area-inset-left));
   }
 }
 
@@ -1197,19 +1193,15 @@ img {
 
   .menu-tag-bar {
     min-height: 54px;
-    padding:
-      10px
-      max(10px, env(safe-area-inset-right))
-      10px
-      max(10px, env(safe-area-inset-left));
+    padding: 10px 10px;
+    padding-right: max(10px, env(safe-area-inset-right));
+    padding-left: max(10px, env(safe-area-inset-left));
   }
 
   .menu-list-scroll {
-    padding:
-      0
-      max(14px, env(safe-area-inset-right))
-      0
-      max(10px, env(safe-area-inset-left));
+    padding: 0 14px 0 10px;
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-left: max(10px, env(safe-area-inset-left));
   }
 
   .menu-row-link {
