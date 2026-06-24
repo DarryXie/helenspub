@@ -71,7 +71,11 @@ function createCocktail(id: number, nameZh: string) {
   };
 }
 
-function createPaginatedResult(page: number, totalPages: number, items: ReturnType<typeof createCocktail>[]) {
+function createPaginatedResult(
+  page: number,
+  totalPages: number,
+  items: ReturnType<typeof createCocktail>[],
+) {
   return {
     list: items,
     pagination: {
@@ -170,6 +174,24 @@ describe('MenuPage', () => {
         pageSize: 10,
         categoryId: undefined,
         tagId: 8,
+      });
+    });
+  });
+
+  it('updates the request after selecting a category', async () => {
+    renderMenu();
+
+    await screen.findByRole('heading', { name: '琥珀微光' });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: '特调鸡尾酒' }));
+
+    await waitFor(() => {
+      expect(mockedFetchPublicCocktails).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 10,
+        categoryId: 2,
+        tagId: undefined,
       });
     });
   });
