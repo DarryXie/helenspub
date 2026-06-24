@@ -95,7 +95,11 @@ describe('OrderWorkbenchPage', () => {
       pagination: {
         page: filters.page ?? 1,
         pageSize: filters.pageSize ?? 1,
-        total: filters.status ? taskTotals[filters.status as keyof typeof taskTotals] ?? 0 : 0,
+        total: filters.statuses?.length
+          ? filters.statuses.reduce((sum, status) => sum + (taskTotals[status as keyof typeof taskTotals] ?? 0), 0)
+          : filters.status
+            ? taskTotals[filters.status as keyof typeof taskTotals] ?? 0
+            : 0,
         totalPages: 1,
       },
     }));
@@ -145,12 +149,8 @@ describe('OrderWorkbenchPage', () => {
     expect(mockedFetchProductionTasks).toHaveBeenCalledWith({
       page: 1,
       pageSize: 1,
-      status: 'pending',
-    });
-    expect(mockedFetchProductionTasks).toHaveBeenCalledWith({
-      page: 1,
-      pageSize: 1,
-      status: 'in_progress',
+      statuses: ['pending', 'in_progress'],
+      sortDirection: 'asc',
     });
     expect(mockedFetchProductionTasks).toHaveBeenCalledWith({
       page: 1,

@@ -1,6 +1,31 @@
 import { apiRequest, API_ORIGIN } from '../../services/http';
 import type { CocktailEditorDetail, CocktailEditorResources, CocktailOption } from './types';
 
+const ADMIN_COCKTAIL_LIST_PAGE_SIZE = 100;
+
+export interface AdminCocktailListItem {
+  id: number;
+  nameZh: string;
+  nameEn?: string | null;
+  price?: number | null;
+  shortDescription?: string | null;
+  coverImageUrl?: string | null;
+  baseSpirit?: string | null;
+  tasteProfile?: string | null;
+  publishStatus: 'draft' | 'published' | 'hidden';
+  isVisible: boolean;
+}
+
+interface PaginatedCocktailListResponse {
+  list: AdminCocktailListItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export function fetchCocktailEditorResources(): Promise<CocktailEditorResources> {
   return Promise.all([
     apiRequest<Array<{ id: number; name: string; slug?: string | null }>>('/admin/categories'),
@@ -22,6 +47,26 @@ export function fetchCocktailEditorResources(): Promise<CocktailEditorResources>
 
 export function fetchCocktailDetail(id: number) {
   return apiRequest<CocktailEditorDetail>(`/admin/cocktails/${id}`);
+}
+
+export async function fetchAdminCocktailList() {
+  const firstPage = await apiRequest<PaginatedCocktailListResponse>(
+    `/admin/cocktails?page=1&pageSize=${ADMIN_COCKTAIL_LIST_PAGE_SIZE}`,
+  );
+
+  if (firstPage.pagination.totalPages <= 1) {
+    return firstPage.list;
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: firstPage.pagination.totalPages - 1 }, (_, index) =>
+      apiRequest<PaginatedCocktailListResponse>(
+        `/admin/cocktails?page=${index + 2}&pageSize=${ADMIN_COCKTAIL_LIST_PAGE_SIZE}`,
+      ),
+    ),
+  );
+
+  return [firstPage, ...remainingPages].flatMap((page) => page.list);
 }
 
 export function createCocktail(payload: Record<string, unknown>) {

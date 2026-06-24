@@ -1,4 +1,5 @@
-import type { ProductionTaskSummary, TaskStatus } from '@cocktail/shared-types';
+import type { TaskStatus } from '@cocktail/shared-types';
+import type { ProductionTaskFilters } from '../../../services/production-tasks';
 
 export type OrderedTaskFilter = 'all' | 'pending' | 'completed' | 'delivered';
 
@@ -37,10 +38,24 @@ export function matchesOrderedTaskFilter(status: TaskStatus, filter: OrderedTask
   return status === filter;
 }
 
-export function sortTasksByCreatedAtAsc(tasks: ProductionTaskSummary[]) {
-  return [...tasks].sort((left, right) => {
-    return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
-  });
+export function buildOrderedTaskRequest(filter: OrderedTaskFilter): ProductionTaskFilters {
+  if (filter === 'all') {
+    return {
+      sortDirection: 'desc',
+    };
+  }
+
+  if (filter === 'pending') {
+    return {
+      statuses: ['pending', 'in_progress'],
+      sortDirection: 'asc',
+    };
+  }
+
+  return {
+    status: filter,
+    sortDirection: 'asc',
+  };
 }
 
 export function statusTone(status: TaskStatus) {

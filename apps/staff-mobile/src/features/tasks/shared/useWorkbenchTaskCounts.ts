@@ -25,17 +25,21 @@ export function useWorkbenchTaskCounts(refreshSeed = 0) {
     setError(null);
 
     Promise.all([
-      fetchProductionTasks({ page: 1, pageSize: COUNT_PAGE_SIZE, status: 'pending' }),
-      fetchProductionTasks({ page: 1, pageSize: COUNT_PAGE_SIZE, status: 'in_progress' }),
+      fetchProductionTasks({
+        page: 1,
+        pageSize: COUNT_PAGE_SIZE,
+        statuses: ['pending', 'in_progress'],
+        sortDirection: 'asc',
+      }),
       fetchProductionTasks({ page: 1, pageSize: COUNT_PAGE_SIZE, status: 'completed' }),
     ])
-      .then(([pendingResult, inProgressResult, completedResult]) => {
+      .then(([pendingResult, completedResult]) => {
         if (isCancelled) {
           return;
         }
 
         setCounts({
-          pendingCount: pendingResult.pagination.total + inProgressResult.pagination.total,
+          pendingCount: pendingResult.pagination.total,
           completedCount: completedResult.pagination.total,
         });
       })

@@ -1,10 +1,14 @@
 import type { PaginatedResult, ProductionTaskDetail, ProductionTaskSummary, TaskStatus } from '@cocktail/shared-types';
 import { apiRequest } from './http';
 
+export type TaskSortDirection = 'asc' | 'desc';
+
 export interface ProductionTaskFilters {
   page?: number;
   pageSize?: number;
   status?: TaskStatus;
+  statuses?: TaskStatus[];
+  sortDirection?: TaskSortDirection;
   keyword?: string;
 }
 
@@ -32,6 +36,7 @@ function buildQueryString(filters: ProductionTaskFilters) {
     ['page', filters.page],
     ['pageSize', filters.pageSize],
     ['status', filters.status],
+    ['sortDirection', filters.sortDirection],
     ['keyword', filters.keyword?.trim()],
   ] as const;
 
@@ -41,6 +46,10 @@ function buildQueryString(filters: ProductionTaskFilters) {
     }
 
     params.set(key, String(value));
+  }
+
+  for (const status of filters.statuses ?? []) {
+    params.append('statuses', status);
   }
 
   const query = params.toString();

@@ -43,6 +43,8 @@ export class ProductionTasksService {
   ) {}
 
   async findAll(query: ProductionTaskQueryDto) {
+    const statuses = query.statuses?.length ? query.statuses : undefined;
+    const sortDirection = query.sortDirection ?? 'desc';
     const where = {
       ...(query.keyword
         ? {
@@ -52,7 +54,11 @@ export class ProductionTasksService {
             ],
           }
         : {}),
-      ...(query.status ? { status: query.status } : {}),
+      ...(statuses
+        ? { status: { in: statuses } }
+        : query.status
+          ? { status: query.status }
+          : {}),
       ...(query.createdByUserId ? { createdByUserId: query.createdByUserId } : {}),
     };
 
@@ -63,7 +69,7 @@ export class ProductionTasksService {
           createdBy: { include: { role: true } },
           assignedTo: { include: { role: true } },
         },
-        orderBy: [{ createdAt: 'desc' }],
+        orderBy: [{ createdAt: sortDirection }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),

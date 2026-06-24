@@ -294,6 +294,13 @@ img {
   scrollbar-width: none;
 }
 
+.menu-tag-strip,
+.pill-skeleton-row {
+  box-sizing: border-box;
+  padding-inline: 8px;
+  scroll-padding-inline: 8px;
+}
+
 .menu-tag-strip::-webkit-scrollbar,
 .pagination-pages::-webkit-scrollbar,
 .detail-chip-row::-webkit-scrollbar {

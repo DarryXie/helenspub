@@ -4,9 +4,8 @@ import {
   getCocktailPublishStatusLabel,
   type CocktailPublishStatus,
 } from '../features/cocktails/status';
-import { updateCocktail } from '../features/cocktails/services';
+import { fetchAdminCocktailList, updateCocktail } from '../features/cocktails/services';
 import { moveItemById, persistSequentialSort } from '../features/sorting/utils';
-import { apiRequest } from '../services/http';
 
 interface CocktailItem {
   id: number;
@@ -42,8 +41,8 @@ export function CocktailsPage() {
     setError('');
 
     try {
-      const data = await apiRequest<{ list: CocktailItem[] }>('/admin/cocktails');
-      setItems(data.list);
+      const data = await fetchAdminCocktailList();
+      setItems(data);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : '加载列表失败');
       setItems([]);

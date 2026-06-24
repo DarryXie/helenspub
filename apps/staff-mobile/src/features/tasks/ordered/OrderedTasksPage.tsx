@@ -1,5 +1,5 @@
 import type { PaginatedResult, ProductionTaskSummary, TaskStatus } from '@cocktail/shared-types';
-import { startTransition, useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useRef, useState, type UIEvent } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { EmptyState } from '../../../components/EmptyState';
 import { InlineError } from '../../../components/InlineError';
@@ -8,15 +8,15 @@ import { formatDateTime } from '../../../utils/display';
 import { TaskStatusBadge } from '../shared/TaskStatusBadge';
 import { TaskStatusModal } from '../shared/TaskStatusModal';
 import {
-  matchesOrderedTaskFilter,
+  buildOrderedTaskRequest,
   orderedTaskFilters,
-  sortTasksByCreatedAtAsc,
   type OrderedTaskFilter,
 } from '../shared/task-status';
 import { useWorkbenchTaskCounts } from '../shared/useWorkbenchTaskCounts';
 import { WorkbenchTabs } from '../shared/WorkbenchTabs';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 20;
+const LOAD_MORE_THRESHOLD = 96;
 
 function parseFilter(value: string | null): OrderedTaskFilter {
   if (value === 'pending' || value === 'completed' || value === 'delivered') {
@@ -65,10 +65,14 @@ export function OrderedTasksPage() {
   const [result, setResult] = useState<PaginatedResult<ProductionTaskSummary> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
   const [activeTask, setActiveTask] = useState<ProductionTaskSummary | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const requestVersionRef = useRef(0);
+  const listRef = useRef<HTMLDivElement | null>(null);
   const {
     counts,
     error: countsError,
@@ -77,41 +81,155 @@ export function OrderedTasksPage() {
   } = useWorkbenchTaskCounts(retryToken);
 
   const activeFilter = parseFilter(searchParams.get('status'));
-  const orderedTasks = useMemo(() => sortTasksByCreatedAtAsc(result?.list ?? []), [result]);
-  const visibleTasks = useMemo(
-    () => orderedTasks.filter((task) => matchesOrderedTaskFilter(task.status, activeFilter)),
-    [orderedTasks, activeFilter],
-  );
+
+  async function requestPage(filter: OrderedTaskFilter, page: number) {
+    return fetchProductionTasks({
+      page,
+      pageSize: PAGE_SIZE,
+      ...buildOrderedTaskRequest(filter),
+    });
+  }
+
+  async function reloadList(
+    filter: OrderedTaskFilter,
+    targetPages: number,
+    options?: {
+      showSkeleton?: boolean;
+    },
+  ) {
+    const requestVersion = ++requestVersionRef.current;
+    const shouldShowSkeleton = options?.showSkeleton ?? false;
+
+    if (shouldShowSkeleton) {
+      setResult(null);
+      setIsLoading(true);
+    }
+
+    setError(null);
+    setLoadMoreError(null);
+
+    try {
+      let currentPage = 1;
+      let lastResult: PaginatedResult<ProductionTaskSummary> | null = null;
+      const mergedTasks: ProductionTaskSummary[] = [];
+
+      while (currentPage <= targetPages) {
+        const nextResult = await requestPage(filter, currentPage);
+
+        if (requestVersionRef.current !== requestVersion) {
+          return;
+        }
+
+        mergedTasks.push(...nextResult.list);
+        lastResult = nextResult;
+
+        if (currentPage >= nextResult.pagination.totalPages) {
+          break;
+        }
+
+        currentPage += 1;
+      }
+
+      if (!lastResult) {
+        setResult(null);
+        return;
+      }
+
+      setResult({
+        ...lastResult,
+        list: mergedTasks,
+        pagination: {
+          ...lastResult.pagination,
+          page: Math.min(targetPages, lastResult.pagination.totalPages),
+        },
+      });
+    } catch (requestError) {
+      if (requestVersionRef.current !== requestVersion) {
+        return;
+      }
+
+      if (requestError instanceof Error) {
+        setError(requestError.message);
+      } else {
+        setError('已点列表加载失败');
+      }
+    } finally {
+      if (requestVersionRef.current === requestVersion) {
+        setIsLoading(false);
+      }
+    }
+  }
+
+  async function loadNextPage() {
+    if (!result || isLoading || isLoadingMore) {
+      return;
+    }
+
+    const nextPage = result.pagination.page + 1;
+
+    if (nextPage > result.pagination.totalPages) {
+      return;
+    }
+
+    const requestVersion = ++requestVersionRef.current;
+    setIsLoadingMore(true);
+    setLoadMoreError(null);
+
+    try {
+      const nextResult = await requestPage(activeFilter, nextPage);
+
+      if (requestVersionRef.current !== requestVersion) {
+        return;
+      }
+
+      setResult((currentResult) => {
+        if (!currentResult) {
+          return nextResult;
+        }
+
+        return {
+          ...nextResult,
+          list: [...currentResult.list, ...nextResult.list],
+        };
+      });
+    } catch (requestError) {
+      if (requestVersionRef.current !== requestVersion) {
+        return;
+      }
+
+      if (requestError instanceof Error) {
+        setLoadMoreError(requestError.message);
+      } else {
+        setLoadMoreError('加载更多失败');
+      }
+    } finally {
+      if (requestVersionRef.current === requestVersion) {
+        setIsLoadingMore(false);
+      }
+    }
+  }
 
   useEffect(() => {
-    let isCancelled = false;
-    setIsLoading(true);
-    setError(null);
+    void reloadList(activeFilter, 1, { showSkeleton: true });
+  }, [activeFilter, retryToken]);
 
-    fetchProductionTasks({
-      page: 1,
-      pageSize: PAGE_SIZE,
-    })
-      .then((nextResult) => {
-        if (!isCancelled) {
-          setResult(nextResult);
-        }
-      })
-      .catch((requestError: Error) => {
-        if (!isCancelled) {
-          setError(requestError.message || '已点列表加载失败');
-        }
-      })
-      .finally(() => {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
-      });
+  useEffect(() => {
+    if (!result || isLoading || isLoadingMore || loadMoreError) {
+      return;
+    }
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [retryToken]);
+    const listElement = listRef.current;
+
+    if (!listElement || listElement.clientHeight <= 0) {
+      return;
+    }
+
+    const canScroll = listElement.scrollHeight > listElement.clientHeight + 1;
+
+    if (!canScroll && result.pagination.page < result.pagination.totalPages) {
+      void loadNextPage();
+    }
+  }, [result, isLoading, isLoadingMore, loadMoreError]);
 
   function updateFilter(nextFilter: OrderedTaskFilter) {
     startTransition(() => {
@@ -128,24 +246,16 @@ export function OrderedTasksPage() {
     setStatusError(null);
 
     try {
-      const updatedTask = await updateProductionTaskStatus(activeTask.id, {
+      await updateProductionTaskStatus(activeTask.id, {
         status: nextStatus,
       });
 
-      setResult((currentResult) => {
-        if (!currentResult) {
-          return currentResult;
-        }
-
-        return {
-          ...currentResult,
-          list: currentResult.list.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
-        };
-      });
+      const loadedPages = Math.max(1, result?.pagination.page ?? 1);
 
       setStatusError(null);
       refreshCounts();
       setActiveTask(null);
+      await reloadList(activeFilter, loadedPages);
     } catch (requestError) {
       if (requestError instanceof Error) {
         setStatusError(requestError.message);
@@ -158,8 +268,27 @@ export function OrderedTasksPage() {
     }
   }
 
+  function handleListScroll(event: UIEvent<HTMLDivElement>) {
+    if (!result || isLoading || isLoadingMore || loadMoreError) {
+      return;
+    }
+
+    const currentTarget = event.currentTarget;
+    const isNearBottom =
+      currentTarget.scrollTop + currentTarget.clientHeight >=
+      currentTarget.scrollHeight - LOAD_MORE_THRESHOLD;
+
+    if (!isNearBottom) {
+      return;
+    }
+
+    void loadNextPage();
+  }
+
+  const hasMorePages = !!result && result.pagination.page < result.pagination.totalPages;
+
   return (
-    <section className="workbench-shell">
+    <section className="workbench-shell workbench-shell-ordered">
       <WorkbenchTabs />
 
       <div className="ordered-container">
@@ -186,25 +315,44 @@ export function OrderedTasksPage() {
           ))}
         </div>
 
-        <div className="order-flow-list">
-          {error ? (
-            <InlineError message={error} onRetry={() => setRetryToken((value) => value + 1)} />
-          ) : isLoading && !result ? (
-            <div aria-hidden="true" className="ordered-skeleton-list">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div className="ordered-skeleton-item" key={index} />
-              ))}
-            </div>
-          ) : visibleTasks.length === 0 ? (
-            <EmptyState
-              title="这一栏暂时没有记录"
-              description="切换筛选看看其他状态，或者先回到点单页创建新的待制作。"
-            />
-          ) : (
-            visibleTasks.map((task) => (
-              <OrderedTaskRow key={task.id} onClick={() => setActiveTask(task)} task={task} />
-            ))
-          )}
+        <div className="ordered-content">
+          <div
+            aria-label="已点列表"
+            className="order-flow-list"
+            onScroll={handleListScroll}
+            ref={listRef}
+          >
+            {error ? (
+              <InlineError message={error} onRetry={() => setRetryToken((value) => value + 1)} />
+            ) : isLoading && !result ? (
+              <div aria-hidden="true" className="ordered-skeleton-list">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div className="ordered-skeleton-item" key={index} />
+                ))}
+              </div>
+            ) : result && result.list.length === 0 ? (
+              <EmptyState
+                title="这一栏暂时没有记录"
+                description="切换筛选看看其他状态，或者先回到点单页创建新的待制作。"
+              />
+            ) : (
+              <>
+                {result?.list.map((task) => (
+                  <OrderedTaskRow key={task.id} onClick={() => setActiveTask(task)} task={task} />
+                ))}
+
+                {isLoadingMore ? <p className="order-flow-feedback">正在加载更多...</p> : null}
+                {!isLoadingMore && loadMoreError ? (
+                  <div className="order-flow-load-error">
+                    <InlineError message={loadMoreError} onRetry={() => void loadNextPage()} />
+                  </div>
+                ) : null}
+                {!isLoadingMore && !loadMoreError && !hasMorePages && result?.list.length ? (
+                  <p className="order-flow-feedback">没有更多了</p>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
